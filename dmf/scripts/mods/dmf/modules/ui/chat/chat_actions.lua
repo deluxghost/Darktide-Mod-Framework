@@ -13,7 +13,6 @@ local _commands_list = {}
 local _command_index = 0 -- 0 => nothing selected
 
 local _commands_list_gui_draw
-local _commands_list_gui_destroy
 
 local _chat_history = {}
 local _chat_history_index = 0
@@ -36,16 +35,11 @@ local function initialize_drawing_function()
   if not _commands_list_gui_draw then
     local commands_list_gui = dmf:io_dofile("dmf/scripts/mods/dmf/modules/ui/chat/commands_list_gui")
     _commands_list_gui_draw = commands_list_gui.draw
-    _commands_list_gui_destroy = commands_list_gui.destroy
   end
 end
 
 local function destroy_command_gui()
-  if _commands_list_gui_destroy then
-    _commands_list_gui_destroy()
-    _commands_list_gui_draw = nil
-    _commands_list_gui_destroy = nil
-  end
+  _commands_list_gui_draw = nil
 end
 
 local function clean_chat_notifications()
@@ -222,7 +216,7 @@ dmf:hook(CLASS.ConstantElementChat, "_handle_active_chat_input", function(func, 
       end
 
 
-      if not autocompleting or not dmf._commands_list_gui_draw then
+      if not autocompleting then
         -- get '/part_of_command_name' without '/'
         local command_name_contains = _chat_message:match("%S+"):sub(2, -1)
 
@@ -246,9 +240,17 @@ dmf:hook(CLASS.ConstantElementChat, "_handle_active_chat_input", function(func, 
       _command_index = 0
     end
 
-    if #_commands_list > 0 then
-      _commands_list_gui_draw(_commands_list, _command_index)
-    end
+  end
+
+  return result
+end)
+
+dmf:hook(CLASS.ConstantElementChat, "_draw_widgets", function(func, self, dt, t, input_service, ui_renderer, render_settings, ...)
+  local result = func(self, dt, t, input_service, ui_renderer, render_settings, ...)
+
+  if _chat_opened and #_commands_list > 0 then
+    initialize_drawing_function()
+    _commands_list_gui_draw(_commands_list, _command_index, ui_renderer)
   end
 
   return result
