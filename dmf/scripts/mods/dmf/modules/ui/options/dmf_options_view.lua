@@ -620,9 +620,12 @@ DMFOptionsView._handle_input = function (self, input_service)
   local selected_settings_widget = self._selected_settings_widget
 
   if selected_settings_widget then
+    local content = selected_settings_widget.content
+    local scrollbar_hotspot = content.scrollbar_hotspot
+    local scrollbar_active = content.drag_active or (scrollbar_hotspot and scrollbar_hotspot.is_hover)
     local close_selected_setting = false
 
-    if input_service:get("left_pressed") or input_service:get("confirm_pressed") or input_service:get("back") then
+    if (input_service:get("left_pressed") and not scrollbar_active) or input_service:get("confirm_pressed") or input_service:get("back") then
       close_selected_setting = true
     else
       self._navigation_column_changed_this_frame = false
