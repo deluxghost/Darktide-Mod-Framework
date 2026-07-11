@@ -7,15 +7,29 @@ local _widgets_by_name
 -- ##### Local functions ##############################################################################################
 -- ####################################################################################################################
 
+local DEFAULT_SCROLL_STEP = 300
+local PAGE_OVERLAP_RATIO = 0.1
+
+local function update_scroll_amount(scrollbar_widget)
+  local content = scrollbar_widget.content
+  local scroll_length = content.scroll_length
+
+  if not scroll_length or scroll_length <= 0 then
+    return
+  end
+
+  local speed_multiplier = math.clamp((dmf:get("dmf_options_scrolling_speed") or 100) / 100, 0.5, 5)
+  local desired_step = DEFAULT_SCROLL_STEP * speed_multiplier
+  local max_step = content.area_length * (1 - PAGE_OVERLAP_RATIO)
+  local pixel_step = math.min(desired_step, max_step, scroll_length)
+
+  content.scroll_amount = pixel_step / scroll_length
+end
+
 local function load_scrolling_speed_setting()
   if _widgets_by_name then
-    local dmf_scroll_speed = math.clamp((dmf:get("dmf_options_scrolling_speed") or 100) / 1000, 0.05, 0.5)
-    if _widgets_by_name["scrollbar"] then
-      _widgets_by_name["scrollbar"].content.scroll_amount = dmf_scroll_speed
-    end
-    if _widgets_by_name["settings_scrollbar"] then
-      _widgets_by_name["settings_scrollbar"].content.scroll_amount = dmf_scroll_speed
-    end
+    update_scroll_amount(_widgets_by_name.scrollbar)
+    update_scroll_amount(_widgets_by_name.settings_scrollbar)
   end
 end
 
@@ -123,6 +137,8 @@ DMFOptionsView._map_validations = function (self, config)
 end
 
 DMFOptionsView.on_exit = function (self)
+  _widgets_by_name = nil
+
   if self._color_picker then
     self:_remove_element("color_picker")
     self._color_picker = nil
@@ -265,9 +281,8 @@ DMFOptionsView._setup_content_grid_scrollbar = function (self, grid, widget_id, 
   local widgets_by_name = self._widgets_by_name
   local scrollbar_widget = widgets_by_name[widget_id]
 
-  load_scrolling_speed_setting()
-
   grid:assign_scrollbar(scrollbar_widget, grid_pivot_scenegraph_id, grid_scenegraph_id, true)
+  update_scroll_amount(scrollbar_widget)
 
   -- Scroll the category grid to the default category widget
   if widget_id == "scrollbar" and _last_selected_category_widget then
@@ -612,6 +627,8 @@ DMFOptionsView.on_resolution_modified = function (self)
   if self._settings_content_grid then
     self._settings_content_grid:on_resolution_modified(scale)
   end
+
+  load_scrolling_speed_setting()
 
   self._grid_length = nil
 end
