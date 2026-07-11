@@ -21,6 +21,11 @@ dmf_mod_data.options = {
       unit_text     = "percent"
     },
     {
+      setting_id    = "dmf_options_remember_scroll_position",
+      type          = "checkbox",
+      default_value = true
+    },
+    {
       setting_id    = "developer_mode",
       type          = "checkbox",
       default_value = false,

@@ -9,6 +9,8 @@ local _widgets_by_name
 
 local DEFAULT_SCROLL_STEP = 300
 local PAGE_OVERLAP_RATIO = 0.1
+local MOD_SCROLL_OFFSETS_SETTING = "options_menu_mod_scroll_offsets"
+local TOGGLE_MODS_SCROLL_OFFSET_SETTING = "options_menu_toggle_mods_scroll_offset"
 
 local function update_scroll_amount(scrollbar_widget)
   local content = scrollbar_widget.content
@@ -137,6 +139,7 @@ DMFOptionsView._map_validations = function (self, config)
 end
 
 DMFOptionsView.on_exit = function (self)
+  self:_save_selected_category_scroll_offset()
   _widgets_by_name = nil
 
   if self._color_picker then
@@ -718,6 +721,56 @@ DMFOptionsView.settings_scroll_amount = function (self)
   return 0
 end
 
+DMFOptionsView._selected_category_scroll_offset = function (self, category_entry)
+  if category_entry.is_toggle_mods_category then
+    return dmf:get(TOGGLE_MODS_SCROLL_OFFSET_SETTING)
+  end
+
+  local scroll_offsets = dmf:get(MOD_SCROLL_OFFSETS_SETTING)
+
+  return scroll_offsets[category_entry.mod_name] or 0
+end
+
+DMFOptionsView._save_selected_category_scroll_offset = function (self)
+  local category_entry = self._selected_category_entry
+
+  if not category_entry or not self._settings_content_grid then
+    return
+  end
+
+  local scroll_offset = self:settings_scroll_amount()
+
+  if category_entry.is_toggle_mods_category then
+    dmf:set(TOGGLE_MODS_SCROLL_OFFSET_SETTING, scroll_offset)
+
+    return
+  end
+
+  local scroll_offsets = dmf:get(MOD_SCROLL_OFFSETS_SETTING)
+
+  scroll_offsets[category_entry.mod_name] = scroll_offset
+
+  dmf:set(MOD_SCROLL_OFFSETS_SETTING, scroll_offsets)
+end
+
+DMFOptionsView._restore_selected_category_scroll_offset = function (self, category_entry)
+  if not dmf:get("dmf_options_remember_scroll_position") then
+    return
+  end
+
+  local grid = self._settings_content_grid
+  local scroll_length = grid:scroll_length()
+
+  if scroll_length <= 0 then
+    return
+  end
+
+  local scroll_offset = self:_selected_category_scroll_offset(category_entry)
+  local scroll_progress = math.clamp(scroll_offset, 0, scroll_length) / scroll_length
+
+  grid:set_scrollbar_progress(scroll_progress)
+end
+
 DMFOptionsView.set_exclusive_focus_on_grid_widget = function (self, widget_name)
   self:_set_exclusive_focus_on_grid_widget(widget_name)
 end
@@ -840,8 +893,10 @@ DMFOptionsView._update_grid_navigation_selection = function (self)
   end
 end
 
-DMFOptionsView.present_category_widgets = function (self, category)
+DMFOptionsView.present_category_widgets = function (self, category, category_entry)
+  self:_save_selected_category_scroll_offset()
   self._selected_category = category
+  self._selected_category_entry = category_entry
   local settings_category_widgets = self._settings_category_widgets
   local grid_data = settings_category_widgets[category]
 
@@ -867,6 +922,7 @@ DMFOptionsView.present_category_widgets = function (self, category)
     self._settings_content_grid = self:_setup_grid(self._settings_content_widgets, self._settings_alignment_list, grid_scenegraph_id, grid_spacing, false)
 
     self:_setup_content_grid_scrollbar(self._settings_content_grid, scrollbar_widget_id, grid_scenegraph_id, grid_pivot_scenegraph_id)
+    self:_restore_selected_category_scroll_offset(category_entry)
 
     self._navigation_widgets[SETTINGS_GRID] = widgets
     self._navigation_grids[SETTINGS_GRID] = self._settings_content_grid
@@ -902,12 +958,14 @@ DMFOptionsView._setup_category_config = function (self, config)
         widget_type = "settings_button",
         display_name = category_display_name,
         can_be_reset = category_config.can_be_reset,
+        mod_name = category_config.mod_name,
+        is_toggle_mods_category = category_config.is_toggle_mods_category,
         pressed_function = function (parent, widget, entry)
           self._category_content_grid:select_widget(widget)
 
           local widget_name = widget.name
 
-          self:present_category_widgets(category_display_name)
+          self:present_category_widgets(category_display_name, entry)
 
           local selected_navigation_column = self._selected_navigation_column_index
 
@@ -916,7 +974,7 @@ DMFOptionsView._setup_category_config = function (self, config)
           end
         end,
         select_function = function (parent, widget, entry)
-          self:present_category_widgets(category_display_name)
+          self:present_category_widgets(category_display_name, entry)
         end
       }
       entries[#entries + 1] = entry

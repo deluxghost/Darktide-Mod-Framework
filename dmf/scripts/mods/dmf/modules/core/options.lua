@@ -630,3 +630,11 @@ end
 if type(dmf:get("options_menu_collapsed_widgets")) ~= "table" then
   dmf:set("options_menu_collapsed_widgets", {})
 end
+
+if type(dmf:get("options_menu_mod_scroll_offsets")) ~= "table" then
+  dmf:set("options_menu_mod_scroll_offsets", {})
+end
+
+if type(dmf:get("options_menu_toggle_mods_scroll_offset")) ~= "number" then
+  dmf:set("options_menu_toggle_mods_scroll_offset", 0)
+end

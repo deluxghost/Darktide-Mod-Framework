@@ -31,6 +31,10 @@ return {
     ["zh-cn"] = "选项菜单滚动速度",
     ja = "オプションメニューのスクロール速度",
   },
+  dmf_options_remember_scroll_position = {
+    en = "Remember Options Scroll Position",
+    ["zh-cn"] = "记住选项滚动位置",
+  },
   dmf_first_run_notification = {
     en = "Welcome to the Darktide Mod Framework. Mod options have been added to the Options Menu.",
     es = "Bienvenidos a el Mod Framework de Darktide. Hemos agregado las opciones de Mod a el menu de opciones.",
