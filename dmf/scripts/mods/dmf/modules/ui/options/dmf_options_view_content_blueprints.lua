@@ -791,17 +791,17 @@ text_input_label_style.text_color = Color.terminal_text_body(255, true)
 
 blueprints.text_input = {
  size = { settings_grid_width, settings_value_height },
-  
+
  pass_template_function = function (parent, config, size)
     local passes = table.clone(TextInputPassTemplates.simple_input_field)
 
     table.insert(passes, {
         value_id = "text",
         pass_type = "text",
-        style = text_input_label_style, 
+        style = text_input_label_style,
     })
 
-    local x_offset = settings_grid_width - settings_value_width
+    local x_offset = size[1] - settings_value_width
 
     for i = 1, #passes do
       local pass = passes[i]
@@ -809,18 +809,18 @@ blueprints.text_input = {
 
       if style_id ~= "text" then
         pass.style = pass.style or {}
-        
+
         pass.style.offset = pass.style.offset or { 0, 0, 0 }
         pass.style.offset[1] = pass.style.offset[1] + x_offset
-        
+
         if style_id == "background" or style_id == "focused" or pass.pass_type == "hotspot" then
           pass.style.size = { settings_value_width, settings_value_height }
         end
         if style_id == "baseline" then
           pass.style.size = { settings_value_width, 2 }
-          -- We force 'top' alignment so the Y offset (62) puts it exactly 
+          -- We force 'top' alignment so the Y offset (62) puts it exactly
           -- at the bottom of our 64px tall row.
-          pass.style.vertical_alignment = "top" 
+          pass.style.vertical_alignment = "top"
           pass.style.offset[2] = settings_value_height - 2
         end
 
@@ -855,7 +855,7 @@ blueprints.text_input = {
     -- Update the mod:get() value for this widget to whatever the current input_text is. This fixes a bug
     -- where it returns a table instead of the table string since text_input reuses keybind functionality
     entry.on_activated(content.input_text, entry)
-    
+
     -- Sync changes back to the mod when the user finishes typing
     entry.changed_callback = function (changed_value)
       if entry.on_activated then
@@ -876,12 +876,12 @@ blueprints.text_input = {
             entry.changed_callback(content.input_text)
         end
     end
-    
+
     if content.hotspot.is_focused or content.is_writing then
         parent.is_text_input_focused = true
-    else 
+    else
       parent.is_text_input_focused = false
-    end 
+    end
   end
 }
 
