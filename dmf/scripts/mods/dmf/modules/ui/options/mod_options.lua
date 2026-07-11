@@ -435,9 +435,10 @@ end
 -- Add a category for toggling mods
 local function create_toggle_category(self, categories)
   local category = {
-    can_be_reset = false,
-    display_name = dmf:localize("toggle_mods"),
-    custom       = true
+    can_be_reset            = false,
+    display_name            = dmf:localize("toggle_mods"),
+    custom                  = true,
+    is_toggle_mods_category = true,
   }
   categories[#categories + 1] = category
   return category
@@ -449,7 +450,8 @@ local function create_mod_category(self, categories, widget_data)
   local category = {
     can_be_reset = widget_data.can_be_reset or true,
     display_name = widget_data.readable_mod_name or widget_data.mod_name or "",
-    custom       = true
+    custom       = true,
+    mod_name     = widget_data.mod_name,
   }
   categories[#categories + 1] = category
   return category
