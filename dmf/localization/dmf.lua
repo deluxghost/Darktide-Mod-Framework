@@ -1,4 +1,8 @@
 return {
+  dmf_mod_name = {
+    en = "Darktide Mod Framework",
+    ["zh-cn"] = "暗潮模组基础框架",
+  },
   mods_options = {
     en = "Mod Options",
     es = "Configuración de mods",
