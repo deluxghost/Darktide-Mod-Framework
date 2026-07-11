@@ -2,7 +2,7 @@
 local dmf = get_mod("DMF")
 
 local dmf_mod_data = {}
-dmf_mod_data.name = "Darktide Mod Framework"
+dmf_mod_data.name = dmf:localize("dmf_mod_name")
 dmf_mod_data.options = {
   widgets = {
     {
