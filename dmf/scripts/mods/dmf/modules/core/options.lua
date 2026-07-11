@@ -433,6 +433,32 @@ local function initialize_numeric_data(mod, data, localize)
 end
 
 -- ---------------------------------------------------------------------------------------------------------------------
+-- ----| Color |--------------------------------------------------------------------------------------------------------
+-- ---------------------------------------------------------------------------------------------------------------------
+
+local function validate_color_data(data)
+  if type(data.has_alpha) ~= "boolean" then
+    dmf.throw_error("[widget \"%s\" (color)]: 'has_alpha' field must have 'boolean' type", data.setting_id)
+  end
+end
+
+
+local function initialize_color_data(mod, data, localize)
+  local new_data = initialize_generic_widget_data(mod, data, localize)
+
+  if type(new_data.default_value) == "userdata" and Script.type_name(new_data.default_value) == "Vector4" then
+    new_data.default_value = {
+      Quaternion.to_elements(new_data.default_value),
+    }
+  end
+
+  new_data.has_alpha = data.has_alpha or false
+  validate_color_data(new_data)
+
+  return new_data
+end
+
+-- ---------------------------------------------------------------------------------------------------------------------
 -- ----| Other function |-----------------------------------------------------------------------------------------------
 -- ---------------------------------------------------------------------------------------------------------------------
 
@@ -449,6 +475,8 @@ local function initialize_widget_data(mod, data, localize, collapsed_widgets)
     return initialize_keybind_data(mod, data, localize)
   elseif data.type == "numeric" then
     return initialize_numeric_data(mod, data, localize)
+  elseif data.type == "color" then
+    return initialize_color_data(mod, data, localize)
   elseif data.type == "text_input" then
     return initialize_keybind_data(mod, data, localize)
   end

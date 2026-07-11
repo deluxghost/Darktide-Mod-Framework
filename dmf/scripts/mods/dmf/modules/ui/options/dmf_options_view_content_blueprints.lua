@@ -2,6 +2,7 @@
 local dmf = get_mod("DMF")
 
 local _view_settings = dmf:io_dofile("dmf/scripts/mods/dmf/modules/ui/options/dmf_options_view_settings")
+local ColorWidget = dmf:io_dofile("dmf/scripts/mods/dmf/modules/ui/options/color/color_widget")
 
 local ButtonPassTemplates = require("scripts/ui/pass_templates/button_pass_templates")
 local CheckboxPassTemplates = require("scripts/ui/pass_templates/checkbox_pass_templates")
@@ -178,6 +179,8 @@ local blueprints = {
     end
   }
 }
+
+blueprints.color = ColorWidget.create_blueprint(settings_grid_width, settings_value_width, settings_value_height)
 
 local function slider_init_function(parent, widget, entry, callback_name, changed_callback_name)
   local content = widget.content
