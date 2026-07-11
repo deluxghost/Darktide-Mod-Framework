@@ -42,6 +42,7 @@ local UIWidget = require("scripts/managers/ui/ui_widget")
 local UIWidgetGrid = require("scripts/ui/widget_logic/ui_widget_grid")
 local ViewElementInputLegend = require("scripts/ui/view_elements/view_element_input_legend/view_element_input_legend")
 local ViewElementKeybindPopup = require("scripts/ui/view_elements/view_element_keybind_popup/view_element_keybind_popup")
+local ViewElementColorPicker = dmf:io_dofile("dmf/scripts/mods/dmf/modules/ui/options/color/color_picker")
 
 local CATEGORIES_GRID = 1
 local SETTINGS_GRID = 2
@@ -122,6 +123,11 @@ DMFOptionsView._map_validations = function (self, config)
 end
 
 DMFOptionsView.on_exit = function (self)
+  if self._color_picker then
+    self:_remove_element("color_picker")
+    self._color_picker = nil
+  end
+
   Managers.event:trigger("event_on_input_settings_changed")
 
   if self._input_legend_element then
@@ -355,7 +361,9 @@ DMFOptionsView._draw_widgets = function (self, dt, t, input_service, ui_renderer
 
   if self._selected_settings_widget then
     UIWidget.draw(self._selected_settings_widget, ui_renderer)
+  end
 
+  if self._selected_settings_widget or self._color_picker or self._color_picker_block_input_this_frame then
     input_service = input_service:null_service()
     ui_renderer.input_service = input_service
   end
@@ -364,6 +372,22 @@ DMFOptionsView._draw_widgets = function (self, dt, t, input_service, ui_renderer
 end
 
 DMFOptionsView._draw_elements = function (self, dt, t, ui_renderer, render_settings, input_service)
+  if self._color_picker or self._color_picker_block_input_this_frame then
+    local elements_array = self._elements_array or {}
+    local null_input_service = input_service:null_service()
+
+    for i = 1, #elements_array do
+      local element = elements_array[i]
+
+      if element then
+        local element_input_service = element == self._color_picker and input_service or null_input_service
+        element:draw(dt, t, ui_renderer, render_settings, element_input_service)
+      end
+    end
+
+    return
+  end
+
   if self:_handling_keybinding() or self._selected_settings_widget then
     input_service = input_service:null_service()
     ui_renderer.input_service = input_service
@@ -372,20 +396,45 @@ DMFOptionsView._draw_elements = function (self, dt, t, ui_renderer, render_setti
   DMFOptionsView.super._draw_elements(self, dt, t, ui_renderer, render_settings, input_service)
 end
 
+DMFOptionsView._update_elements = function (self, dt, t, input_service)
+  if self._color_picker or self._color_picker_block_input_this_frame then
+    local elements_array = self._elements_array or {}
+    local null_input_service = input_service:null_service()
+
+    for i = 1, #elements_array do
+      local element = elements_array[i]
+
+      if element then
+        local element_input_service = element == self._color_picker and input_service or null_input_service
+        element:update(dt, t, element_input_service)
+      end
+    end
+
+    return
+  end
+
+  DMFOptionsView.super._update_elements(self, dt, t, input_service)
+end
+
 DMFOptionsView.draw = function (self, dt, t, input_service, layer)
   if self:_handling_keybinding() then
     input_service = input_service:null_service()
   end
 
+  local background_input_service = input_service
+  if self._color_picker or self._color_picker_block_input_this_frame then
+    background_input_service = input_service:null_service()
+  end
+
   local widgets_by_name = self._widgets_by_name
   local grid_interaction_widget = widgets_by_name.grid_interaction
 
-  self:_draw_grid(self._category_content_grid, self._category_content_widgets, grid_interaction_widget, dt, t, input_service)
+  self:_draw_grid(self._category_content_grid, self._category_content_widgets, grid_interaction_widget, dt, t, background_input_service)
 
   if self._settings_content_grid then
     local grid_interaction_widget = widgets_by_name.settings_grid_interaction
 
-    self:_draw_grid(self._settings_content_grid, self._settings_content_widgets, grid_interaction_widget, dt, t, input_service)
+    self:_draw_grid(self._settings_content_grid, self._settings_content_widgets, grid_interaction_widget, dt, t, background_input_service)
   end
 
   DMFOptionsView.super.draw(self, dt, t, input_service, layer)
@@ -397,6 +446,7 @@ DMFOptionsView._draw_grid = function (self, grid, widgets, interaction_widget, d
   local render_settings = self._render_settings
   local ui_renderer = self._ui_offscreen_renderer
   local ui_scenegraph = self._ui_scenegraph
+  local color_picker_blocks_background = self._color_picker or self._color_picker_block_input_this_frame
 
   UIRenderer.begin_pass(ui_renderer, ui_scenegraph, input_service, dt, render_settings)
 
@@ -416,7 +466,7 @@ DMFOptionsView._draw_grid = function (self, grid, widgets, interaction_widget, d
           hotspot.force_disabled = not is_grid_hovered
           local is_active = hotspot.is_focused or hotspot.is_hover
 
-          if is_active and widget.content.entry and (widget.content.entry.tooltip_text or widget.content.entry.disabled_by and not table.is_empty(widget.content.entry.disabled_by)) then
+          if not color_picker_blocks_background and is_active and widget.content.entry and (widget.content.entry.tooltip_text or widget.content.entry.disabled_by and not table.is_empty(widget.content.entry.disabled_by)) then
             self:_set_tooltip_data(widget)
           end
         end
@@ -450,8 +500,16 @@ DMFOptionsView.set_render_scale = function (self, scale)
 end
 
 DMFOptionsView.update = function (self, dt, t, input_service, view_data)
+  self._color_picker_block_input_this_frame = self._color_picker ~= nil or self._color_picker_closed_this_frame
+  self._color_picker_closed_this_frame = nil
+
   local drawing_view = view_data and view_data.drawing_view
   local using_cursor_navigation = Managers.ui:using_cursor_navigation()
+
+  if self._using_cursor_navigation ~= using_cursor_navigation then
+    self._using_cursor_navigation = using_cursor_navigation
+    self:_on_navigation_input_changed()
+  end
 
   if self:_handling_keybinding() then
     if not drawing_view or not using_cursor_navigation then
@@ -481,19 +539,26 @@ DMFOptionsView.update = function (self, dt, t, input_service, view_data)
     self._grid_length = grid_length
   end
 
+  local color_picker_open = self._color_picker ~= nil or self._color_picker_block_input_this_frame
   local category_grid_is_focused = self._selected_navigation_column_index == CATEGORIES_GRID
   local category_grid_input_service = category_grid_is_focused and input_service or input_service:null_service()
 
-  self._category_content_grid:update(dt, t, category_grid_input_service)
-  self:_update_category_content_widgets(dt, t)
+  self._category_content_grid:update(dt, t, color_picker_open and input_service:null_service() or category_grid_input_service)
+
+  if not color_picker_open then
+    self:_update_category_content_widgets(dt, t)
+  end
 
   local settings_content_grid = self._settings_content_grid
 
   if settings_content_grid then
-    local settings_grid_input_service = not category_grid_is_focused and not self._selected_settings_widget and input_service or input_service:null_service()
+    local settings_grid_input_service = not color_picker_open and not category_grid_is_focused and not self._selected_settings_widget and input_service or input_service:null_service()
 
     settings_content_grid:update(dt, t, settings_grid_input_service)
-    self:_update_settings_content_widgets(dt, t, input_service)
+
+    if not color_picker_open then
+      self:_update_settings_content_widgets(dt, t, input_service)
+    end
   end
 
   if self._validation_mapping then
@@ -553,6 +618,30 @@ end
 
 DMFOptionsView._on_navigation_input_changed = function (self)
   DMFOptionsView.super._on_navigation_input_changed(self)
+
+  if self._color_picker then
+    return
+  end
+
+  local selected_color_widget
+
+  for i = 1, #(self._settings_content_widgets or {}) do
+    local widget = self._settings_content_widgets[i]
+    local content = widget.content
+    local on_navigation_input_changed = content.on_navigation_input_changed
+
+    if on_navigation_input_changed then
+      on_navigation_input_changed()
+
+      if widget == self._selected_settings_widget then
+        selected_color_widget = true
+      end
+    end
+  end
+
+  if selected_color_widget then
+    self:_set_exclusive_focus_on_grid_widget(nil)
+  end
 
   if self._settings_content_widgets then
     self:_update_grid_navigation_selection()
@@ -617,10 +706,22 @@ DMFOptionsView.set_exclusive_focus_on_grid_widget = function (self, widget_name)
 end
 
 DMFOptionsView._handle_input = function (self, input_service)
+  if self._color_picker or self._color_picker_block_input_this_frame then
+    return
+  end
+
   local selected_settings_widget = self._selected_settings_widget
 
   if selected_settings_widget then
     local content = selected_settings_widget.content
+    local gamepad_input_handler = not self._using_cursor_navigation and content.gamepad_input_handler
+
+    if gamepad_input_handler then
+      self._close_selected_setting = gamepad_input_handler(input_service) and true or nil
+
+      return
+    end
+
     local scrollbar_hotspot = content.scrollbar_hotspot
     local scrollbar_active = content.drag_active or (scrollbar_hotspot and scrollbar_hotspot.is_hover)
     local close_selected_setting = false
@@ -647,6 +748,53 @@ DMFOptionsView._handle_input = function (self, input_service)
     elseif not input_service:get("confirm_pressed") and not input_service:get("back") then
       self._navigation_column_changed_this_frame = false
     end
+  end
+end
+
+DMFOptionsView.show_color_picker = function (self, entry)
+  if self._color_picker or entry.disabled then
+    return
+  end
+
+  local color = entry.get_function() or entry.default_value
+  self._tooltip_data = {}
+  self._widgets_by_name.tooltip.content.visible = false
+  self:_set_exclusive_focus_on_grid_widget(nil)
+  self._color_picker = self:_add_element(ViewElementColorPicker, "color_picker", 100, {
+    color = color,
+    entry = entry,
+  })
+  self._color_picker_block_input_this_frame = true
+  self:set_can_exit(false)
+end
+
+DMFOptionsView.update_color_widget_preview = function (self, entry, color)
+  local widgets = self._settings_content_widgets or {}
+
+  for i = 1, #widgets do
+    local content = widgets[i].content
+
+    if content.entry == entry then
+      content.preview_color = {
+        color[1],
+        color[2],
+        color[3],
+        color[4],
+      }
+
+      return
+    end
+  end
+end
+
+DMFOptionsView.close_color_picker = function (self)
+  if self._color_picker then
+    self:_remove_element("color_picker")
+    self._color_picker = nil
+    self._color_picker_closed_this_frame = true
+    self._color_picker_block_input_this_frame = true
+    self:set_can_exit(true, true)
+    self:_update_grid_navigation_selection()
   end
 end
 

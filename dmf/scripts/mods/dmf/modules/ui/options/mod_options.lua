@@ -150,6 +150,40 @@ _type_template_map["numeric"] = create_value_slider_template
 
 
 -- ######################
+-- ######## Color #######
+-- ######################
+
+local create_color_template = function (self, params)
+  local template = {
+    after = params.parent_index,
+    category = params.category,
+    default_value = params.default_value,
+    display_name = params.title,
+    has_alpha = params.has_alpha,
+    indentation_level = params.depth,
+    mod_name = params.mod_name,
+    require_restart = params.require_restart,
+    setting_id = params.setting_id,
+    tooltip_text = params.tooltip,
+    widget_type = "color",
+  }
+
+  template.on_activated = function (new_value)
+    get_mod(params.mod_name):set(params.setting_id, new_value, true)
+
+    return true
+  end
+
+  template.get_function = function ()
+    return get_mod(params.mod_name):get(params.setting_id)
+  end
+
+  return template
+end
+_type_template_map["color"] = create_color_template
+
+
+-- ######################
 -- ###### Checkbox ######
 -- ######################
 
