@@ -112,10 +112,11 @@ local function initialize_generic_widget_data(mod, data, localize)
   local new_data = {}
 
   -- Automatically generated values
-  new_data.index         = data.index
-  new_data.parent_index  = data.parent_index
-  new_data.depth         = data.depth
-  new_data.mod_name      = mod:get_name()
+  new_data.index           = data.index
+  new_data.parent_index    = data.parent_index
+  new_data.depth           = data.depth
+  new_data.has_sub_widgets = data.sub_widgets and #data.sub_widgets > 0 or false
+  new_data.mod_name        = mod:get_name()
 
   -- Defined in widget
   new_data.type            = data.type

@@ -59,6 +59,7 @@ local UIWidgetGrid = require("scripts/ui/widget_logic/ui_widget_grid")
 local ViewElementInputLegend = require("scripts/ui/view_elements/view_element_input_legend/view_element_input_legend")
 local ViewElementKeybindPopup = require("scripts/ui/view_elements/view_element_keybind_popup/view_element_keybind_popup")
 local ViewElementColorPicker = dmf:io_dofile("dmf/scripts/mods/dmf/modules/ui/options/color/color_picker")
+local ViewElementOptionsTabIndicator = dmf:io_dofile("dmf/scripts/mods/dmf/modules/ui/options/tab_indicator/options_tab_indicator")
 
 local CATEGORIES_GRID = 1
 local SETTINGS_GRID = 2
@@ -573,6 +574,7 @@ DMFOptionsView.update = function (self, dt, t, input_service, view_data)
     local settings_grid_input_service = not color_picker_open and not category_grid_is_focused and not self._selected_settings_widget and input_service or input_service:null_service()
 
     settings_content_grid:update(dt, t, settings_grid_input_service)
+    self:_update_tab_scroll_animation()
 
     if not color_picker_open then
       self:_update_settings_content_widgets(dt, t, input_service)
@@ -808,7 +810,11 @@ DMFOptionsView._handle_input = function (self, input_service)
     local selected_navigation_column = self._selected_navigation_column_index
 
     if selected_navigation_row and selected_navigation_column then
-      if input_service:get("navigate_left_continuous") then
+      if not self._using_cursor_navigation and selected_navigation_column == SETTINGS_GRID and input_service:get("navigate_primary_left_pressed") then
+        self:_page_options_tab(-1)
+      elseif not self._using_cursor_navigation and selected_navigation_column == SETTINGS_GRID and input_service:get("navigate_primary_right_pressed") then
+        self:_page_options_tab(1)
+      elseif input_service:get("navigate_left_continuous") then
         self:_change_navigation_column(selected_navigation_column - 1)
       elseif input_service:get("navigate_right_continuous") then
         self:_change_navigation_column(selected_navigation_column + 1)
@@ -895,6 +901,7 @@ end
 
 DMFOptionsView.present_category_widgets = function (self, category, category_entry)
   self:_save_selected_category_scroll_offset()
+  self._tab_scroll_animation = nil
   self._selected_category = category
   self._selected_category_entry = category_entry
   local settings_category_widgets = self._settings_category_widgets
@@ -923,6 +930,7 @@ DMFOptionsView.present_category_widgets = function (self, category, category_ent
 
     self:_setup_content_grid_scrollbar(self._settings_content_grid, scrollbar_widget_id, grid_scenegraph_id, grid_pivot_scenegraph_id)
     self:_restore_selected_category_scroll_offset(category_entry)
+    self:_setup_options_tab_indicator(grid_data, category_entry)
 
     self._navigation_widgets[SETTINGS_GRID] = widgets
     self._navigation_grids[SETTINGS_GRID] = self._settings_content_grid
@@ -1057,6 +1065,7 @@ DMFOptionsView._setup_settings_config = function (self, config)
       local widget_suffix = "setting_" .. tostring(setting_index)
       local widget, alignment_widget = self:_create_settings_widget_from_config(setting, category, widget_suffix, callback_name, changed_callback_name)
       category_widgets[category][#widgets + 1] = {
+        entry = setting,
         widget = widget,
         alignment_widget = alignment_widget
       }
@@ -1065,6 +1074,196 @@ DMFOptionsView._setup_settings_config = function (self, config)
 
   self._settings_category_default_values = settings_default_values
   self._settings_category_widgets = category_widgets
+end
+
+DMFOptionsView._setup_options_tab_indicator = function (self, grid_data, category_entry)
+  if self._options_tab_indicator then
+    self:_remove_element("options_tab_indicator")
+    self._options_tab_indicator = nil
+  end
+
+  local first_option_index
+
+  for i = 1, #grid_data do
+    local entry = grid_data[i].entry
+
+    if not entry.is_category_header and not entry.is_category_description then
+      first_option_index = i
+      break
+    end
+  end
+
+  if not first_option_index then
+    return
+  end
+
+  local function first_focusable_widget(start_index, end_index)
+    for i = start_index, end_index do
+      local widget = grid_data[i].widget
+      local content = widget and widget.content
+
+      if content and (content.hotspot or content.button_hotspot) then
+        return widget, i
+      end
+    end
+  end
+
+  local function first_focusable_descendant(start_index)
+    local end_index = #grid_data
+
+    for i = start_index + 1, #grid_data do
+      if (grid_data[i].entry.indentation_level or 0) == 0 then
+        end_index = i - 1
+
+        break
+      end
+    end
+
+    return first_focusable_widget(start_index + 1, end_index)
+  end
+
+  local candidates = {}
+  local first_entry = grid_data[first_option_index].entry
+
+  if not first_entry.is_options_tab_candidate then
+    candidates[1] = {
+      display_name = category_entry.display_name,
+      is_mod_tab = true,
+      start_index = first_option_index,
+    }
+  end
+
+  for i = first_option_index, #grid_data do
+    local data = grid_data[i]
+    local entry = data.entry
+
+    if entry.is_options_tab_candidate then
+      local descendant_widget, descendant_grid_index = first_focusable_descendant(i)
+
+      if descendant_widget then
+        candidates[#candidates + 1] = {
+          display_name = entry.display_name,
+          focus_grid_index = entry.options_tab_focus_self and i or descendant_grid_index,
+          focus_widget = entry.options_tab_focus_self and data.widget or descendant_widget,
+          start_index = i,
+        }
+      end
+    end
+  end
+
+  local scroll_length = self._settings_content_grid:scroll_length()
+  local tabs = {}
+
+  for i = 1, #candidates do
+    local candidate = candidates[i]
+    local end_index = i < #candidates and candidates[i + 1].start_index - 1 or #grid_data
+    local focus_widget = candidate.focus_widget
+    local focus_grid_index = candidate.focus_grid_index
+
+    if candidate.is_mod_tab then
+      focus_widget, focus_grid_index = first_focusable_widget(candidate.start_index, end_index)
+    end
+
+    if focus_widget then
+      local first_widget = grid_data[candidate.start_index].widget
+      local last_widget = grid_data[end_index].widget
+
+      tabs[#tabs + 1] = {
+        content_end = math.abs(last_widget.offset[2]) + last_widget.content.size[2],
+        content_start = math.abs(first_widget.offset[2]),
+        display_name = candidate.display_name,
+        focus_grid_index = focus_grid_index,
+        focus_widget = focus_widget,
+        scroll_offset = math.min(math.abs(first_widget.offset[2]), scroll_length),
+      }
+    end
+  end
+
+  if tabs[1] then
+    tabs[1].scroll_offset = 0
+  end
+
+  if #tabs <= 1 or scroll_length <= 0 then
+    return
+  end
+
+  local settings_grid_scenegraph = self._ui_scenegraph.settings_grid_background
+
+  self._options_tab_indicator = self:_add_element(ViewElementOptionsTabIndicator, "options_tab_indicator", 20, {
+    available_width = settings_grid_scenegraph.size[1],
+    available_x = settings_grid_scenegraph.world_position[1],
+    tabs = tabs,
+    get_focused_grid_index = callback(self, "_focused_options_grid_index"),
+    get_scroll_amount = callback(self, "settings_scroll_amount"),
+    on_tab_pressed = callback(self, "_on_options_tab_pressed"),
+    show_gamepad_prompts = callback(self, "_show_options_tab_gamepad_prompts"),
+  })
+end
+
+DMFOptionsView._focused_options_grid_index = function (self)
+  return self._selected_navigation_column_index == SETTINGS_GRID and self._selected_navigation_row_index or nil
+end
+
+DMFOptionsView._show_options_tab_gamepad_prompts = function (self)
+  return not self._using_cursor_navigation and self._selected_navigation_column_index == SETTINGS_GRID and not self._selected_settings_widget and not self._color_picker
+end
+
+DMFOptionsView._page_options_tab = function (self, direction)
+  local tab_indicator = self._options_tab_indicator
+
+  if not tab_indicator then
+    return
+  end
+
+  local tab, tab_index = tab_indicator:relative_tab(direction, self._selected_navigation_row_index)
+
+  if not tab then
+    return
+  end
+
+  local scroll_amount = self:settings_scroll_amount()
+  local visible_end = scroll_amount + self._settings_content_grid:area_length()
+  local tab_fully_visible = scroll_amount <= tab.content_start and tab.content_end <= visible_end
+
+  if tab.focus_widget then
+    self:_set_selected_navigation_widget(tab.focus_widget)
+  end
+
+  tab_indicator:select_focused_tab(tab_index)
+
+  if not tab_fully_visible then
+    self:_on_options_tab_pressed(tab)
+  end
+end
+
+DMFOptionsView._on_options_tab_pressed = function (self, tab)
+  local grid = self._settings_content_grid
+  local scroll_length = grid:scroll_length()
+  local scroll_progress = scroll_length > 0 and tab.scroll_offset / scroll_length or 0
+
+  grid:set_scrollbar_progress(scroll_progress, true)
+
+  local scrollbar_content = self._widgets_by_name.settings_scrollbar.content
+
+  scrollbar_content.scroll_add = nil
+  scrollbar_content.scroll_value = nil
+  self._tab_scroll_animation = true
+end
+
+DMFOptionsView._update_tab_scroll_animation = function (self)
+  if not self._tab_scroll_animation then
+    return
+  end
+
+  local grid = self._settings_content_grid
+  local scrollbar_content = self._widgets_by_name.settings_scrollbar.content
+
+  if grid._ui_animations.scrollbar then
+    scrollbar_content.scroll_value = nil
+  else
+    scrollbar_content.scroll_value = scrollbar_content.value
+    self._tab_scroll_animation = nil
+  end
 end
 
 DMFOptionsView._update_category_content_widgets = function (self, dt, t)
