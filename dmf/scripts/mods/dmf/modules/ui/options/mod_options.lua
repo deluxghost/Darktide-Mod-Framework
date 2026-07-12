@@ -38,6 +38,7 @@ local create_header_template = function (self, params)
     category = params.category,
     display_name = params.readable_mod_name or params.title,
     group_name = params.mod_name,
+    is_category_header = true,
     tooltip_text = params.tooltip,
     widget_type = "group_header",
   }
@@ -56,6 +57,7 @@ local create_description_template = function (self, params)
     category = params.category,
     group_name = params.mod_name,
     display_name = params.description,
+    is_category_description = params.is_category_description,
     widget_type = "description",
     after = params.after
   }
@@ -71,6 +73,8 @@ _type_template_map["description"] = create_description_template
 local create_group_template = function(self, params)
   local template = {
     display_name = params.title,
+    indentation_level = params.depth,
+    is_options_tab_candidate = params.depth == 0 and params.has_sub_widgets,
     widget_type = "group_header",
     after = params.parent_index
   }
@@ -195,6 +199,8 @@ local create_checkbox_template = function (self, params)
     default_value = params.default_value,
     display_name = params.title,
     indentation_level = params.depth,
+    is_options_tab_candidate = params.depth == 0 and params.has_sub_widgets,
+    options_tab_focus_self = true,
     require_restart = params.require_restart,
     tooltip_text = params.tooltip,
     value_type = "boolean",
@@ -263,7 +269,9 @@ local create_dropdown_template = function (self, params)
     default_value = params.default_value,
     display_name = params.title,
     indentation_level = params.depth,
+    is_options_tab_candidate = params.depth == 0 and params.has_sub_widgets,
     options = params.options,
+    options_tab_focus_self = true,
     tooltip_text = params.tooltip,
     require_restart = params.require_restart,
     widget_type = "dropdown",
@@ -560,6 +568,7 @@ dmf.create_mod_options_settings = function (self, options_templates)
     description = dmf:localize("toggle_mods_description"),
     category = toggle_category.display_name,
     display_name = toggle_category.display_name,
+    is_category_description = true,
     after = #settings,
     type = "description"
   }
@@ -609,6 +618,7 @@ dmf.create_mod_options_settings = function (self, options_templates)
           description = mod_data[1].description,
           category = category.display_name,
           display_name = category.display_name,
+          is_category_description = true,
           after = #settings,
           type = "description"
         }
