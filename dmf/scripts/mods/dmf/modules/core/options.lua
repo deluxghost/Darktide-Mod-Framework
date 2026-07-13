@@ -368,6 +368,104 @@ local function initialize_keybind_data(mod, data, localize)
 end
 
 -- ---------------------------------------------------------------------------------------------------------------------
+-- ----| Text |---------------------------------------------------------------------------------------------------------
+-- ---------------------------------------------------------------------------------------------------------------------
+
+local function validate_text_value(data, value, value_name)
+  if data.max_length and Utf8.string_length(value) > data.max_length then
+    dmf.throw_error("[widget \"%s\" (text)]: %s exceeds 'max_length'", data.setting_id, value_name)
+  end
+
+  if data.validate and not data.validate(value) then
+    dmf.throw_error("[widget \"%s\" (text)]: %s does not pass the 'validate' function", data.setting_id, value_name)
+  end
+end
+
+
+local function validate_text_data(data)
+  if type(data.default_value) ~= "string" then
+    dmf.throw_error("[widget \"%s\" (text)]: 'default_value' field is required and must have 'string' type",
+                     data.setting_id)
+  end
+
+  if data.placeholder_text ~= nil and type(data.placeholder_text) ~= "string" then
+    dmf.throw_error("[widget \"%s\" (text)]: 'placeholder_text' field must have 'string' type", data.setting_id)
+  end
+
+  local max_length = data.max_length
+
+  if max_length ~= nil and (type(max_length) ~= "number" or max_length < 1 or max_length ~= math.floor(max_length)) then
+    dmf.throw_error("[widget \"%s\" (text)]: 'max_length' field must be a positive integer", data.setting_id)
+  end
+
+  if data.validate ~= nil and type(data.validate) ~= "function" then
+    dmf.throw_error("[widget \"%s\" (text)]: 'validate' field must have 'function' type", data.setting_id)
+  end
+
+  if type(data.show_length_limit) ~= "boolean" then
+    dmf.throw_error("[widget \"%s\" (text)]: 'show_length_limit' field must have 'boolean' type",
+                     data.setting_id)
+  end
+
+  validate_text_value(data, data.default_value, "'default_value'")
+end
+
+
+-- Legacy text settings stored values as arrays; only the first element represented the text value.
+local function migrate_legacy_text_setting(mod, data)
+  local value = mod:get(data.setting_id)
+  local value_type = type(value)
+
+  if value == nil then
+    return
+  elseif value_type == "string" then
+    validate_text_value(data, value, "stored setting")
+
+    return
+  elseif value_type == "table" then
+    local first_value = value[1]
+
+    if first_value == nil then
+      first_value = ""
+    end
+
+    if type(first_value) == "string" then
+      validate_text_value(data, first_value, "stored setting")
+
+      mod:set(data.setting_id, first_value)
+      return
+    end
+  end
+
+  dmf.throw_error("[widget \"%s\" (text)]: stored setting must have 'string' type", data.setting_id)
+end
+
+
+local function initialize_text_data(mod, data, localize)
+  local new_data = initialize_generic_widget_data(mod, data, localize)
+
+  new_data.placeholder_text     = data.placeholder_text
+  new_data.max_length           = data.max_length
+  new_data.validate             = data.validate
+
+  if data.show_length_limit == nil then
+    new_data.show_length_limit = true
+  else
+    new_data.show_length_limit = data.show_length_limit
+  end
+
+  validate_text_data(new_data)
+
+  if new_data.localize and new_data.placeholder_text then
+    new_data.placeholder_text = mod:localize(new_data.placeholder_text)
+  end
+
+  migrate_legacy_text_setting(mod, new_data)
+
+  return new_data
+end
+
+-- ---------------------------------------------------------------------------------------------------------------------
 -- ----| Numeric |------------------------------------------------------------------------------------------------------
 -- ---------------------------------------------------------------------------------------------------------------------
 
@@ -478,8 +576,8 @@ local function initialize_widget_data(mod, data, localize, collapsed_widgets)
     return initialize_numeric_data(mod, data, localize)
   elseif data.type == "color" then
     return initialize_color_data(mod, data, localize)
-  elseif data.type == "text_input" then
-    return initialize_keybind_data(mod, data, localize)
+  elseif data.type == "text" then
+    return initialize_text_data(mod, data, localize)
   end
   -- if data.type is incorrect, returns nil
 end

@@ -390,29 +390,30 @@ end
 _type_template_map["keybind"] = create_keybind_template
 
 -- ##############################
--- ######### Text Input #########
+-- ############ Text ############
 -- ##############################
 
-local create_text_input_template = function (self, params)
+local create_text_template = function (self, params)
   local template = {
     after = params.parent_index,
     category = params.category,
-    default_value = params.default_value or "",
+    default_value = params.default_value,
     display_name = params.title,
     indentation_level = params.depth,
+    max_length = params.max_length,
+    placeholder_text = params.placeholder_text,
+    require_restart = params.require_restart,
+    show_length_limit = params.show_length_limit,
     tooltip_text = params.tooltip,
-    widget_type = "text_input",
+    validate = params.validate,
+    widget_type = "text",
     mod_name = params.mod_name,
-    setting_id = params.setting_id,
-    function_name = params.function_name
+    setting_id = params.setting_id
   }
-  
+
   template.on_activated = function(new_value)
-    local mod = get_mod(params.mod_name)
-    mod:set(params.setting_id, new_value, true)
-    if template.function_name and mod[template.function_name] then
-      dmf.safe_call_nr(mod, {"[Text Input] function_call", template.function_name}, mod[template.function_name], true)
-    end
+    get_mod(params.mod_name):set(params.setting_id, new_value, true)
+
     return true
   end
 
@@ -422,7 +423,7 @@ local create_text_input_template = function (self, params)
 
   return template
 end
-_type_template_map["text_input"] = create_text_input_template
+_type_template_map["text"] = create_text_template
 
 
 -- ###########################
