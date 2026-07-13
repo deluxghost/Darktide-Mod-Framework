@@ -74,7 +74,6 @@ local create_group_template = function(self, params)
   local template = {
     display_name = params.title,
     indentation_level = params.depth,
-    is_options_tab_candidate = params.depth == 0 and params.has_sub_widgets,
     widget_type = "group_header",
     after = params.parent_index
   }
@@ -199,7 +198,6 @@ local create_checkbox_template = function (self, params)
     default_value = params.default_value,
     display_name = params.title,
     indentation_level = params.depth,
-    is_options_tab_candidate = params.depth == 0 and params.has_sub_widgets,
     options_tab_focus_self = true,
     require_restart = params.require_restart,
     tooltip_text = params.tooltip,
@@ -269,7 +267,6 @@ local create_dropdown_template = function (self, params)
     default_value = params.default_value,
     display_name = params.title,
     indentation_level = params.depth,
-    is_options_tab_candidate = params.depth == 0 and params.has_sub_widgets,
     options = params.options,
     options_tab_focus_self = true,
     tooltip_text = params.tooltip,
@@ -433,7 +430,14 @@ _type_template_map["text"] = create_text_template
 -- Get the template creation function associated with a given widget data type
 local function widget_data_to_template(self, data)
   if data and data.type and type(data.type) == "string" and _type_template_map[data.type] then
-    return _type_template_map[data.type](self, data)
+    local template = _type_template_map[data.type](self, data)
+
+    if data.has_sub_widgets and (data.type == "checkbox" or data.type == "dropdown") then
+      template.controls_sub_widgets = true
+      template.mod_name = data.mod_name
+    end
+
+    return template
   else
     dmf:dump(data, "widget", 1)
     dmf:error(ERRORS.REGULAR.invalid_widget_type, tostring(data.mod_name), tostring(data.type))
@@ -477,6 +481,83 @@ local function create_option_template(self, widget_data, category_name, index_of
 
     return template
   end
+end
+
+
+local function has_focusable_descendant(widgets, widget_index)
+  local depth = widgets[widget_index].depth
+
+  for i = widget_index + 1, #widgets do
+    local widget = widgets[i]
+
+    if widget.depth <= depth then
+      break
+    end
+
+    if widget.type ~= "group" then
+      return true
+    end
+  end
+
+  return false
+end
+
+
+local function dropdown_shown_widgets(widget)
+  local value = get_mod(widget.mod_name):get(widget.setting_id)
+
+  for i = 1, #widget.options do
+    local option = widget.options[i]
+
+    if option.value == value then
+      return option.show_widgets
+    end
+  end
+end
+
+
+local function update_widget_set_visibility(widget_set)
+  local widgets = widget_set.widgets
+  local templates = widget_set.templates
+  local visible = {
+    [1] = true,
+  }
+  local dropdown_children = {}
+  local changed = false
+
+  for i = 2, #widgets do
+    local widget = widgets[i]
+    local parent = widgets[widget.parent_index]
+    local is_visible = visible[widget.parent_index] ~= false
+
+    if is_visible and parent.type == "checkbox" then
+      is_visible = get_mod(parent.mod_name):get(parent.setting_id) == true
+    elseif is_visible and parent.type == "dropdown" then
+      local shown_widgets = dropdown_children[parent.index]
+
+      if shown_widgets == nil then
+        shown_widgets = dropdown_shown_widgets(parent) or false
+        dropdown_children[parent.index] = shown_widgets
+      end
+
+      is_visible = shown_widgets and shown_widgets[widget.index] or false
+    end
+
+    visible[widget.index] = is_visible
+
+    local template = templates[widget.index]
+
+    if template then
+      local hidden = not is_visible
+
+      if template.hidden ~= hidden then
+        template.hidden = hidden
+        changed = true
+      end
+    end
+  end
+
+  return changed
 end
 
 -- Insert a new item into a table before any items that pass the item_tester function
@@ -541,10 +622,32 @@ end)
 -- ##### DMF internal functions and variables #########################################################################
 -- ####################################################################################################################
 
+dmf.update_mod_options_visibility = function (self, options_templates, mod_name)
+  local widget_sets = options_templates.dynamic_widget_sets
+
+  if mod_name then
+    local widget_set = widget_sets[mod_name]
+
+    return widget_set and update_widget_set_visibility(widget_set) or false
+  end
+
+  local changed = false
+
+  for _, widget_set in pairs(widget_sets) do
+    changed = update_widget_set_visibility(widget_set) or changed
+  end
+
+  return changed
+end
+
+
 -- Add mod settings to options view
 dmf.create_mod_options_settings = function (self, options_templates)
   local categories = options_templates.categories
   local settings = options_templates.settings
+  local dynamic_widget_sets = {}
+
+  options_templates.dynamic_widget_sets = dynamic_widget_sets
 
   -- Create the toggle category
   local toggle_category = create_toggle_category(self, categories)
@@ -603,6 +706,13 @@ dmf.create_mod_options_settings = function (self, options_templates)
   for _, mod_data in ipairs(dmf.options_widgets_data) do
     if #mod_data > 1 then
       local category = create_mod_category(self, categories, mod_data[1])
+      local templates = {}
+      local mod_name = mod_data[1].mod_name
+
+      dynamic_widget_sets[mod_name] = {
+        templates = templates,
+        widgets = mod_data,
+      }
 
       local index_offset = 0
 
@@ -640,8 +750,12 @@ dmf.create_mod_options_settings = function (self, options_templates)
           template.custom = true
           template.category = category.display_name
           template.after = template.after + index_offset
+          template.is_options_tab_candidate = widget_data.depth == 0
+            and widget_data.has_sub_widgets
+            and has_focusable_descendant(mod_data, i)
 
           settings[#settings + 1] = template
+          templates[widget_data.index] = template
         end
       end
     end
