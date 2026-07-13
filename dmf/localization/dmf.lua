@@ -100,6 +100,14 @@ return {
     ["zh-cn"] = "在一个新窗口中显示游戏实时日志。",
     ja = "ゲームのログをリアルタイムで表示する新たなウィンドウを開きます。",
   },
+  log_to_developer_console = {
+    en = "Output Logs to Developer Console",
+    ["zh-cn"] = "输出日志到开发者控制台",
+  },
+  log_to_developer_console_description = {
+    en = "Also displays messages written to the log file in the developer console.",
+    ["zh-cn"] = "同时在开发者控制台中显示最终写入日志文件的消息。",
+  },
   toggle_developer_console = {
     en = "Toggle Developer Console",
     es = "Abrir el registro (log) a tiempo real",
