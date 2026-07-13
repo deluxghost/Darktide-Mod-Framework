@@ -44,6 +44,11 @@ dmf_mod_data.options = {
           keybind_type    = "function_call",
           function_name   = "toggle_developer_console"
         },
+        {
+          setting_id    = "log_to_developer_console",
+          type          = "checkbox",
+          default_value = true
+        },
         -- {
         --   setting_id    = "show_network_debug_info",
         --   type          = "checkbox",
@@ -219,7 +224,8 @@ dmf.on_setting_changed = function (setting_id)
     dmf.load_custom_textures_settings()
     dmf.load_dev_console_settings()
 
-  elseif setting_id == "show_developer_console" then
+  elseif setting_id == "show_developer_console"
+      or setting_id == "log_to_developer_console" then
 
     dmf.load_dev_console_settings()
 

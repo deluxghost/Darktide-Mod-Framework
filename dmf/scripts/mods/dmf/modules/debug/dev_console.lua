@@ -16,30 +16,25 @@ local _console_data = dmf:persistent_table("dev_console_data")
 if not _console_data.enabled then _console_data.enabled = false end
 if not _console_data.original_print then _console_data.original_print = print end
 
+local _log_to_developer_console
+
 -- ####################################################################################################################
 -- ##### Local functions ##############################################################################################
 -- ####################################################################################################################
 
+local function log_and_console_print(...)
+  CommandWindow.print(...)
+  _console_data.original_print(...)
+end
+
 local function open_dev_console()
 
   if not _console_data.enabled then
-
-    local print_hook_function = function(func, ...)
-      if _console_data.enabled then
-        CommandWindow.print(...)
-        func(...)
-      else
-        func(...)
-      end
-    end
-
-    print = function(...)
-      print_hook_function(_console_data.original_print, ...)
-    end
-
     CommandWindow.open("Developer console")
     _console_data.enabled = true
   end
+
+  print = log_and_console_print
 end
 
 local function close_dev_console()
@@ -77,6 +72,12 @@ end
 -- ##### DMF internal functions and variables #########################################################################
 -- ####################################################################################################################
 
+dmf.developer_console_print = log_and_console_print
+
+dmf.is_developer_console_logging_enabled = function()
+  return _console_data.enabled and _log_to_developer_console
+end
+
 dmf.toggle_developer_console = function ()
 
   if dmf:get("developer_mode") then
@@ -95,6 +96,8 @@ dmf.toggle_developer_console = function ()
 end
 
 dmf.load_dev_console_settings = function()
+
+  _log_to_developer_console = dmf:get("log_to_developer_console") ~= false
 
   if dmf:get("developer_mode") and dmf:get("show_developer_console") then
     open_dev_console()
