@@ -140,6 +140,10 @@ local blueprints = {
       content.text = display_name
       content.entry = entry
 
+      if entry.controls_sub_widgets then
+        content.dynamic_visibility_value = entry:get_function()
+      end
+
       for i = 1, 2 do
         local widget_option_id = "option_" .. i
         content[widget_option_id] = i == 1 and Managers.localization:localize("loc_setting_checkbox_on") or Managers.localization:localize("loc_setting_checkbox_off")
@@ -147,7 +151,7 @@ local blueprints = {
 
       entry.changed_callback = function (changed_value)
         --callback(parent, callback_name, widget, entry)()
-        callback(parent, changed_callback_name, widget, entry)()
+        callback(parent, changed_callback_name, widget, entry, changed_value)()
       end
     end,
     update = function (parent, widget, input_service, dt, t)
@@ -160,6 +164,11 @@ local blueprints = {
       local is_disabled = entry.disabled or false
       content.disabled = is_disabled
       local new_value = nil
+
+      if entry.controls_sub_widgets and content.dynamic_visibility_value ~= value then
+        content.dynamic_visibility_value = value
+        parent:cb_on_dynamic_setting_value_changed(widget, entry, value)
+      end
 
       if hotspot.on_pressed and not parent._navigation_column_changed_this_frame and not is_disabled then
         new_value = not value
@@ -578,6 +587,10 @@ blueprints.dropdown = {
     content.scroll_amount = scroll_amount
     local value = entry.get_function and entry:get_function() or entry.default_value
 
+    if entry.controls_sub_widgets then
+      content.dynamic_visibility_value = value
+    end
+
     entry.changed_callback = function (changed_value)
       callback(parent, changed_callback_name, widget, entry, changed_value)()
     end
@@ -619,6 +632,11 @@ blueprints.dropdown = {
     end
 
     value = entry.get_function and entry:get_function() or content.internal_value or "<not selected>"
+
+    if entry.controls_sub_widgets and content.dynamic_visibility_value ~= value then
+      content.dynamic_visibility_value = value
+      parent:cb_on_dynamic_setting_value_changed(widget, entry, value)
+    end
 
     local preview_option = options_by_value[value]
     local preview_option_value = preview_option and preview_option.value

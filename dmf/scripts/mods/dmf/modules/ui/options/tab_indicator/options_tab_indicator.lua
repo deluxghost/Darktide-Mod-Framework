@@ -54,10 +54,14 @@ ViewElementOptionsTabIndicator.init = function (self, parent, draw_layer, start_
   self._show_gamepad_prompts = context.show_gamepad_prompts
   self._content_width = #tabs * TAB_WIDTH + (#tabs - 1) * TAB_SPACING
   self._max_scroll_offset = math.max(self._content_width - panel_width, 0)
-  self._scroll_offset = 0
-  self._target_scroll_offset = 0
+  self._scroll_offset = math.clamp(context.initial_scroll_offset or 0, 0, self._max_scroll_offset)
+  self._target_scroll_offset = self._scroll_offset
 
   self:_refresh_tabs()
+end
+
+ViewElementOptionsTabIndicator.horizontal_scroll_offset = function (self)
+  return self._scroll_offset
 end
 
 ViewElementOptionsTabIndicator._select_tab = function (self, tab_index)

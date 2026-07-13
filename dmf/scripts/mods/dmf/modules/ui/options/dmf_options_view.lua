@@ -93,6 +93,7 @@ DMFOptionsView.on_enter = function (self)
 
   self._default_category = nil
   self._using_cursor_navigation = Managers.ui:using_cursor_navigation()
+  dmf:update_mod_options_visibility(self._options_templates)
   self._validation_mapping = self:_map_validations(self._options_templates)
 
   self:_setup_settings_config(self._options_templates)
@@ -223,6 +224,13 @@ DMFOptionsView.cb_reset_category_to_default = function (self)
                 end
               end
             end
+          end
+
+          local category_entry = self._selected_category_entry
+          local mod_name = category_entry and category_entry.mod_name
+
+          if mod_name and dmf:update_mod_options_visibility(self._options_templates, mod_name) then
+            self:_refresh_dynamic_options()
           end
 
           self._popup_id = nil
@@ -696,6 +704,77 @@ DMFOptionsView._reset_options_view = function (self, reset_all)
   self:_update_grid_navigation_selection()
 end
 
+DMFOptionsView._refresh_dynamic_options = function (self, changed_entry)
+  local category = self._selected_category
+  local category_entry = self._selected_category_entry
+
+  if not category or not category_entry then
+    return
+  end
+
+  local scroll_amount = self:settings_scroll_amount()
+  local tab_scroll_offset = self._options_tab_indicator and self._options_tab_indicator:horizontal_scroll_offset()
+  local restore_gamepad_focus = not self._using_cursor_navigation
+    and self._selected_navigation_column_index == SETTINGS_GRID
+
+  if restore_gamepad_focus and not changed_entry then
+    local selected_widget = self._settings_content_widgets[self._selected_navigation_row_index]
+
+    changed_entry = selected_widget and selected_widget.content.entry
+  end
+
+  self._close_selected_setting = nil
+  self._tooltip_data = {}
+  self._widgets_by_name.tooltip.content.visible = false
+  self:_set_exclusive_focus_on_grid_widget(nil)
+  self:_setup_settings_config(self._options_templates)
+  self:present_category_widgets(category, category_entry, tab_scroll_offset)
+
+  local grid = self._settings_content_grid
+  local scroll_length = grid:scroll_length()
+
+  if scroll_length > 0 then
+    grid:set_scrollbar_progress(math.clamp(scroll_amount, 0, scroll_length) / scroll_length)
+  end
+
+  if restore_gamepad_focus and changed_entry then
+    local category_data = self._settings_category_widgets[category]
+    local target_index
+
+    for i = 1, #category_data do
+      if category_data[i].entry == changed_entry then
+        target_index = i
+
+        break
+      end
+    end
+
+    while target_index do
+      local data = category_data[target_index]
+      local content = data.widget.content
+
+      if not data.entry.hidden and (content.hotspot or content.button_hotspot) then
+        self:_set_selected_navigation_widget(data.widget)
+
+        break
+      end
+
+      local indentation_level = data.entry.indentation_level or 0
+      local parent_index
+
+      for i = target_index - 1, 1, -1 do
+        if (category_data[i].entry.indentation_level or 0) < indentation_level then
+          parent_index = i
+
+          break
+        end
+      end
+
+      target_index = parent_index
+    end
+  end
+end
+
 DMFOptionsView.settings_grid_length = function (self)
   local grid = self._settings_content_grid
 
@@ -899,25 +978,29 @@ DMFOptionsView._update_grid_navigation_selection = function (self)
   end
 end
 
-DMFOptionsView.present_category_widgets = function (self, category, category_entry)
+DMFOptionsView.present_category_widgets = function (self, category, category_entry, tab_scroll_offset)
   self:_save_selected_category_scroll_offset()
   self._tab_scroll_animation = nil
   self._selected_category = category
   self._selected_category_entry = category_entry
   local settings_category_widgets = self._settings_category_widgets
-  local grid_data = settings_category_widgets[category]
+  local category_data = settings_category_widgets[category]
 
-  if grid_data then
+  if category_data then
     dmf:set("options_menu_last_selected", category)
 
+    local grid_data = {}
     local widgets = {}
     local alignment_widgets = {}
 
-    for i = 1, #grid_data do
-      local widget = grid_data[i].widget
-      local alignment_widget = grid_data[i].alignment_widget
-      widgets[#widgets + 1] = widget
-      alignment_widgets[#alignment_widgets + 1] = alignment_widget
+    for i = 1, #category_data do
+      local data = category_data[i]
+
+      if not data.entry.hidden then
+        grid_data[#grid_data + 1] = data
+        widgets[#widgets + 1] = data.widget
+        alignment_widgets[#alignment_widgets + 1] = data.alignment_widget
+      end
     end
 
     self._settings_content_widgets = widgets
@@ -930,7 +1013,7 @@ DMFOptionsView.present_category_widgets = function (self, category, category_ent
 
     self:_setup_content_grid_scrollbar(self._settings_content_grid, scrollbar_widget_id, grid_scenegraph_id, grid_pivot_scenegraph_id)
     self:_restore_selected_category_scroll_offset(category_entry)
-    self:_setup_options_tab_indicator(grid_data, category_entry)
+    self:_setup_options_tab_indicator(grid_data, category_entry, tab_scroll_offset)
 
     self._navigation_widgets[SETTINGS_GRID] = widgets
     self._navigation_grids[SETTINGS_GRID] = self._settings_content_grid
@@ -1044,16 +1127,9 @@ DMFOptionsView._setup_settings_config = function (self, config)
 
   for setting_index, setting in ipairs(config_settings) do
     local valid = self._validation_mapping[setting.category].settings[setting.display_name].validation_result
+    local category = setting.category or "Uncategorized"
 
-    if valid and not setting.hidden then
-      local category = setting.category or "Uncategorized"
-      local widgets = category_widgets[category]
-
-      if not category_widgets[category] then
-        category_widgets[category] = {}
-        widgets = category_widgets[category]
-      end
-
+    if valid then
       if not settings_default_values[category] then
         settings_default_values[category] = {}
       end
@@ -1062,9 +1138,16 @@ DMFOptionsView._setup_settings_config = function (self, config)
         settings_default_values[category][setting] = setting.default_value
       end
 
+      local widgets = category_widgets[category]
+
+      if not widgets then
+        widgets = {}
+        category_widgets[category] = widgets
+      end
+
       local widget_suffix = "setting_" .. tostring(setting_index)
       local widget, alignment_widget = self:_create_settings_widget_from_config(setting, category, widget_suffix, callback_name, changed_callback_name)
-      category_widgets[category][#widgets + 1] = {
+      widgets[#widgets + 1] = {
         entry = setting,
         widget = widget,
         alignment_widget = alignment_widget
@@ -1076,7 +1159,7 @@ DMFOptionsView._setup_settings_config = function (self, config)
   self._settings_category_widgets = category_widgets
 end
 
-DMFOptionsView._setup_options_tab_indicator = function (self, grid_data, category_entry)
+DMFOptionsView._setup_options_tab_indicator = function (self, grid_data, category_entry, tab_scroll_offset)
   if self._options_tab_indicator then
     self:_remove_element("options_tab_indicator")
     self._options_tab_indicator = nil
@@ -1138,16 +1221,19 @@ DMFOptionsView._setup_options_tab_indicator = function (self, grid_data, categor
     local entry = data.entry
 
     if entry.is_options_tab_candidate then
-      local descendant_widget, descendant_grid_index = first_focusable_descendant(i)
+      local focus_widget = data.widget
+      local focus_grid_index = i
 
-      if descendant_widget then
-        candidates[#candidates + 1] = {
-          display_name = entry.display_name,
-          focus_grid_index = entry.options_tab_focus_self and i or descendant_grid_index,
-          focus_widget = entry.options_tab_focus_self and data.widget or descendant_widget,
-          start_index = i,
-        }
+      if not entry.options_tab_focus_self then
+        focus_widget, focus_grid_index = first_focusable_descendant(i)
       end
+
+      candidates[#candidates + 1] = {
+        display_name = entry.display_name,
+        focus_grid_index = focus_grid_index,
+        focus_widget = focus_widget,
+        start_index = i,
+      }
     end
   end
 
@@ -1192,6 +1278,7 @@ DMFOptionsView._setup_options_tab_indicator = function (self, grid_data, categor
   self._options_tab_indicator = self:_add_element(ViewElementOptionsTabIndicator, "options_tab_indicator", 20, {
     available_width = settings_grid_scenegraph.size[1],
     available_x = settings_grid_scenegraph.world_position[1],
+    initial_scroll_offset = tab_scroll_offset,
     tabs = tabs,
     get_focused_grid_index = callback(self, "_focused_options_grid_index"),
     get_scroll_amount = callback(self, "settings_scroll_amount"),
@@ -1374,7 +1461,15 @@ DMFOptionsView._update_settings_content_widgets = function (self, dt, t, input_s
       if update then
         update(self, widget, input_service, dt, t)
       end
+    end
 
+    local dynamic_options_changed_entry = self._dynamic_options_changed_entry
+
+    if dynamic_options_changed_entry then
+      self._dynamic_options_changed_entry = nil
+      self:_refresh_dynamic_options(dynamic_options_changed_entry)
+
+      return
     end
 
     if selected_settings_widget and self._close_selected_setting then
@@ -1625,6 +1720,20 @@ DMFOptionsView.cb_on_settings_changed = function (self, widget, entry, option_va
         end
       end
     end
+  end
+
+  if entry.controls_sub_widgets then
+    self:cb_on_dynamic_setting_value_changed(widget, entry, option_value)
+  end
+end
+
+DMFOptionsView.cb_on_dynamic_setting_value_changed = function (self, widget, entry, option_value)
+  if widget then
+    widget.content.dynamic_visibility_value = option_value
+  end
+
+  if dmf:update_mod_options_visibility(self._options_templates, entry.mod_name) then
+    self._dynamic_options_changed_entry = entry
   end
 end
 
