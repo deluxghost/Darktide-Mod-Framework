@@ -59,13 +59,28 @@ local UIWidgetGrid = require("scripts/ui/widget_logic/ui_widget_grid")
 local ViewElementInputLegend = require("scripts/ui/view_elements/view_element_input_legend/view_element_input_legend")
 local ViewElementKeybindPopup = require("scripts/ui/view_elements/view_element_keybind_popup/view_element_keybind_popup")
 local ViewElementColorPicker = dmf:io_dofile("dmf/scripts/mods/dmf/modules/ui/options/color/color_picker")
+local FilterInput = dmf:io_dofile("dmf/scripts/mods/dmf/modules/ui/options/header/filter_input")
+local OptionsFilter = dmf:io_dofile("dmf/scripts/mods/dmf/modules/ui/options/header/options_filter")
+local ViewElementOptionsHeader = dmf:io_dofile("dmf/scripts/mods/dmf/modules/ui/options/header/options_header")
 local ViewElementOptionsTabIndicator = dmf:io_dofile("dmf/scripts/mods/dmf/modules/ui/options/tab_indicator/options_tab_indicator")
 
 local CATEGORIES_GRID = 1
 local SETTINGS_GRID = 2
+local GRID_SCROLL_EPSILON = 0.001
+local TOOLTIP_HORIZONTAL_PADDING = 20
+local TOOLTIP_VERTICAL_PADDING = 20
+local TOOLTIP_SECTION_SPACING = 8
+local TOOLTIP_TEXT_HEIGHT_BOUND = 100000
 
 local _last_selected_category_entry
 local _last_selected_category_widget
+
+local function grid_item_is_fully_visible(grid, index)
+  local target_progress = grid:get_scrollbar_percentage_by_index(index)
+
+  return target_progress == nil
+    or math.abs(target_progress - grid:scrollbar_progress()) <= GRID_SCROLL_EPSILON
+end
 
 local DMFOptionsView = class("DMFOptionsView", "BaseView")
 
@@ -96,6 +111,8 @@ DMFOptionsView.on_enter = function (self)
   dmf:update_mod_options_visibility(self._options_templates)
   self._validation_mapping = self:_map_validations(self._options_templates)
 
+  self:_setup_category_filter()
+  self:_setup_options_header()
   self:_setup_settings_config(self._options_templates)
   self:_setup_category_config(self._options_templates)
   self:_setup_input_legend()
@@ -157,6 +174,12 @@ DMFOptionsView.on_exit = function (self)
     self:_remove_element("input_legend")
   end
 
+  if self._options_header then
+    self._options_header = nil
+
+    self:_remove_element("options_header")
+  end
+
   if self._popup_id then
     Managers.event:trigger("event_remove_ui_popup", self._popup_id)
   end
@@ -183,9 +206,18 @@ end
 DMFOptionsView.cb_on_back_pressed = function (self)
   local selected_navigation_column = self._selected_navigation_column_index
   local selected_settings_widget = self._selected_settings_widget
+  local category_focus_widget = self._category_filter_focused and self:_category_focus_widget()
 
-  if selected_settings_widget then
+  if self:_is_category_filter_writing() then
+    FilterInput.finish_editing(self._category_filter_content)
+  elseif self._options_header and self._options_header:is_filter_writing() then
+    self._options_header:finish_filter_editing()
+  elseif selected_settings_widget then
     self._close_selected_setting = true
+  elseif category_focus_widget then
+    self:_set_selected_navigation_widget(category_focus_widget)
+  elseif self._header_navigation_control then
+    self:_focus_category_from_header()
   elseif selected_navigation_column == SETTINGS_GRID then
     self:_change_navigation_column(selected_navigation_column - 1)
   elseif self._require_restart then
@@ -289,19 +321,70 @@ DMFOptionsView._setup_input_legend = function (self)
   end
 end
 
-DMFOptionsView._setup_content_grid_scrollbar = function (self, grid, widget_id, grid_scenegraph_id, grid_pivot_scenegraph_id)
+DMFOptionsView._setup_options_header = function (self)
+  local header_scenegraph = self._ui_scenegraph.settings_header
+  local settings_grid_scenegraph = self._ui_scenegraph.settings_grid_background
+
+  self._settings_grid_layout = {
+    bottom = settings_grid_scenegraph.world_position[2] + settings_grid_scenegraph.size[2],
+    header_y = header_scenegraph.world_position[2],
+    interaction_height_delta = self._ui_scenegraph.settings_grid_interaction.size[2] - settings_grid_scenegraph.size[2],
+    mask_height_delta = self._ui_scenegraph.settings_grid_mask.size[2] - settings_grid_scenegraph.size[2],
+    scrollbar_height_delta = self._ui_scenegraph.settings_scrollbar.size[2] - settings_grid_scenegraph.size[2],
+  }
+
+  self._options_header = self:_add_element(ViewElementOptionsHeader, "options_header", 20, {
+    panel_x = header_scenegraph.world_position[1],
+    panel_y = header_scenegraph.world_position[2],
+    get_toggle_value = callback(self, "_get_header_toggle_value"),
+    on_toggle_changed = callback(self, "_on_header_toggle_changed"),
+  })
+  self._applied_options_filter = ""
+end
+
+DMFOptionsView._setup_category_filter = function (self)
+  local content = self._widgets_by_name.category_filter.content
+
+  FilterInput.reset(content)
+
+  self._category_filter_content = content
+  self._applied_category_filter = ""
+end
+
+DMFOptionsView._set_options_header_layout = function (self, header_height, header_spacing)
+  local layout = self._settings_grid_layout
+  local grid_y = layout.header_y + header_height + header_spacing
+  local grid_height = layout.bottom - grid_y
+
+  self:_set_scenegraph_position("settings_grid_background", nil, grid_y)
+  self:_set_scenegraph_size("settings_grid_background", nil, grid_height)
+  self:_set_scenegraph_size("settings_grid_interaction", nil, grid_height + layout.interaction_height_delta)
+  self:_set_scenegraph_size("settings_grid_mask", nil, grid_height + layout.mask_height_delta)
+  self:_set_scenegraph_size("settings_scrollbar", nil, grid_height + layout.scrollbar_height_delta)
+  self:_force_update_scenegraph()
+end
+
+DMFOptionsView._get_header_toggle_value = function (self, category_entry)
+  return get_mod(category_entry.mod_name):is_enabled()
+end
+
+DMFOptionsView._on_header_toggle_changed = function (self, category_entry, value)
+  dmf.mod_state_changed(category_entry.mod_name, value)
+end
+
+DMFOptionsView._setup_content_grid_scrollbar = function (self, grid, widget_id, grid_scenegraph_id, grid_pivot_scenegraph_id, category_position_widget)
   local widgets_by_name = self._widgets_by_name
   local scrollbar_widget = widgets_by_name[widget_id]
 
   grid:assign_scrollbar(scrollbar_widget, grid_pivot_scenegraph_id, grid_scenegraph_id, true)
   update_scroll_amount(scrollbar_widget)
 
-  -- Scroll the category grid to the default category widget
-  if widget_id == "scrollbar" and _last_selected_category_widget then
-    local index = grid:index_by_widget(_last_selected_category_widget)
-    local scroll_progress = grid:get_scrollbar_percentage_by_index(index)
+  -- Scroll the category grid to the requested category widget
+  if category_position_widget and widget_id == "scrollbar" then
+    local index = grid:index_by_widget(category_position_widget)
+    local scroll_progress = index and grid:get_scrollbar_percentage_by_index(index)
 
-    grid:set_scrollbar_progress(scroll_progress)
+    grid:set_scrollbar_progress(scroll_progress or 0)
   else
     grid:set_scrollbar_progress(0)
   end
@@ -493,7 +576,7 @@ DMFOptionsView._draw_grid = function (self, grid, widgets, interaction_widget, d
           hotspot.force_disabled = not is_grid_hovered
           local is_active = hotspot.is_focused or hotspot.is_hover
 
-          if not color_picker_blocks_background and is_active and widget.content.entry and (widget.content.entry.tooltip_text or widget.content.entry.disabled_by and not table.is_empty(widget.content.entry.disabled_by)) then
+          if not color_picker_blocks_background and is_active and widget.content.entry and (widget.content.entry.tooltip_text or widget.content.entry.tooltip_identifier or widget.content.entry.tooltip_metadata or widget.content.entry.disabled_by and not table.is_empty(widget.content.entry.disabled_by)) then
             self:_set_tooltip_data(widget)
           end
         end
@@ -524,6 +607,10 @@ DMFOptionsView.set_render_scale = function (self, scale)
   if self._settings_content_grid then
     self._settings_content_grid:set_render_scale(self._render_scale)
   end
+
+  if self._options_header then
+    self._options_header:invalidate_text_layout()
+  end
 end
 
 DMFOptionsView.update = function (self, dt, t, input_service, view_data)
@@ -536,6 +623,24 @@ DMFOptionsView.update = function (self, dt, t, input_service, view_data)
   if self._using_cursor_navigation ~= using_cursor_navigation then
     self._using_cursor_navigation = using_cursor_navigation
     self:_on_navigation_input_changed()
+  end
+
+  local category_filter_text = self._category_filter_content.input_text or ""
+
+  if category_filter_text ~= self._applied_category_filter then
+    local previous_text = self._applied_category_filter
+
+    self._applied_category_filter = category_filter_text
+    self:_on_category_filter_changed(category_filter_text, previous_text)
+  end
+
+  local filter_text = self._options_header:filter_text()
+
+  if filter_text ~= self._applied_options_filter then
+    local previous_text = self._applied_options_filter
+
+    self._applied_options_filter = filter_text
+    self:_on_header_filter_changed(filter_text, previous_text)
   end
 
   if self:_handling_keybinding() then
@@ -567,8 +672,24 @@ DMFOptionsView.update = function (self, dt, t, input_service, view_data)
   end
 
   local color_picker_open = self._color_picker ~= nil or self._color_picker_block_input_this_frame
+  local selected_category_grid_index = self._category_content_grid:selected_grid_index()
+
+  if not color_picker_open
+    and not self._using_cursor_navigation
+    and self._selected_navigation_column_index == CATEGORIES_GRID
+    and selected_category_grid_index == self._first_category_focusable_index
+    and grid_item_is_fully_visible(self._category_content_grid, selected_category_grid_index)
+    and input_service:get("navigate_up_continuous") then
+    self:_focus_category_filter()
+  end
+
   local category_grid_is_focused = self._selected_navigation_column_index == CATEGORIES_GRID
-  local category_grid_input_service = category_grid_is_focused and input_service or input_service:null_service()
+  local category_filter_blocks_grid = self._category_filter_focused or self:_is_category_filter_writing()
+  local category_filter_input_service = color_picker_open and input_service:null_service() or input_service
+
+  FilterInput.update(self._category_filter_content, category_filter_input_service, self._category_filter_focused)
+
+  local category_grid_input_service = category_grid_is_focused and not category_filter_blocks_grid and input_service or input_service:null_service()
 
   self._category_content_grid:update(dt, t, color_picker_open and input_service:null_service() or category_grid_input_service)
 
@@ -579,7 +700,22 @@ DMFOptionsView.update = function (self, dt, t, input_service, view_data)
   local settings_content_grid = self._settings_content_grid
 
   if settings_content_grid then
-    local settings_grid_input_service = not color_picker_open and not category_grid_is_focused and not self._selected_settings_widget and input_service or input_service:null_service()
+    local header_blocks_grid = category_filter_blocks_grid or self._header_navigation_control or self._options_header:is_filter_writing()
+
+    if not color_picker_open
+      and not self._using_cursor_navigation
+      and self._selected_navigation_column_index == SETTINGS_GRID
+      and not header_blocks_grid
+      and not self._selected_settings_widget
+      and settings_content_grid:selected_grid_index() == self._first_settings_focusable_index
+      and grid_item_is_fully_visible(settings_content_grid, self._first_settings_focusable_index)
+      and input_service:get("navigate_up_continuous") then
+      self:_focus_header_control("filter")
+      input_service = input_service:null_service()
+      header_blocks_grid = true
+    end
+
+    local settings_grid_input_service = not color_picker_open and not category_grid_is_focused and not header_blocks_grid and not self._selected_settings_widget and input_service or input_service:null_service()
 
     settings_content_grid:update(dt, t, settings_grid_input_service)
     self:_update_tab_scroll_animation()
@@ -587,6 +723,11 @@ DMFOptionsView.update = function (self, dt, t, input_service, view_data)
     if not color_picker_open then
       self:_update_settings_content_widgets(dt, t, input_service)
     end
+  end
+
+  if self._category_filter_focused or self:_is_category_filter_writing()
+    or self._options_header and (self._header_navigation_control == "filter" or self._options_header:is_filter_writing()) then
+    self.is_text_input_focused = true
   end
 
   if self._validation_mapping then
@@ -641,6 +782,10 @@ DMFOptionsView.on_resolution_modified = function (self)
     self._settings_content_grid:on_resolution_modified(scale)
   end
 
+  if self._options_header then
+    self._options_header:invalidate_text_layout()
+  end
+
   load_scrolling_speed_setting()
 
   self._grid_length = nil
@@ -671,6 +816,15 @@ DMFOptionsView._on_navigation_input_changed = function (self)
 
   if selected_color_widget then
     self:_set_exclusive_focus_on_grid_widget(nil)
+  end
+
+  if self._using_cursor_navigation then
+    self:_clear_header_navigation()
+    self:_clear_category_filter_navigation()
+  elseif self:_is_category_filter_writing() then
+    self:_focus_category_filter()
+  elseif self._options_header:is_filter_writing() then
+    self:_focus_header_control("filter")
   end
 
   if self._settings_content_widgets then
@@ -728,7 +882,11 @@ DMFOptionsView._refresh_dynamic_options = function (self, changed_entry)
   self._widgets_by_name.tooltip.content.visible = false
   self:_set_exclusive_focus_on_grid_widget(nil)
   self:_setup_settings_config(self._options_templates)
-  self:present_category_widgets(category, category_entry, tab_scroll_offset)
+  self:present_category_widgets(category, category_entry, tab_scroll_offset, {
+    preserve_header = true,
+    restore_saved_scroll = false,
+    skip_save_scroll = true,
+  })
 
   local grid = self._settings_content_grid
   local scroll_length = grid:scroll_length()
@@ -739,7 +897,12 @@ DMFOptionsView._refresh_dynamic_options = function (self, changed_entry)
 
   if restore_gamepad_focus and changed_entry then
     local category_data = self._settings_category_widgets[category]
+    local visible_widgets = {}
     local target_index
+
+    for i = 1, #self._settings_content_widgets do
+      visible_widgets[self._settings_content_widgets[i]] = true
+    end
 
     for i = 1, #category_data do
       if category_data[i].entry == changed_entry then
@@ -753,7 +916,7 @@ DMFOptionsView._refresh_dynamic_options = function (self, changed_entry)
       local data = category_data[target_index]
       local content = data.widget.content
 
-      if not data.entry.hidden and (content.hotspot or content.button_hotspot) then
+      if visible_widgets[data.widget] and (content.hotspot or content.button_hotspot) then
         self:_set_selected_navigation_widget(data.widget)
 
         break
@@ -812,10 +975,14 @@ DMFOptionsView._selected_category_scroll_offset = function (self, category_entry
   return scroll_offsets[category_entry.mod_name] or 0
 end
 
-DMFOptionsView._save_selected_category_scroll_offset = function (self)
+DMFOptionsView._save_selected_category_scroll_offset = function (self, force)
   local category_entry = self._selected_category_entry
 
   if not category_entry or not self._settings_content_grid then
+    return
+  end
+
+  if not force and self._options_header and self._options_header:filter_text() ~= "" then
     return
   end
 
@@ -884,6 +1051,10 @@ DMFOptionsView._handle_input = function (self, input_service)
     end
 
     self._close_selected_setting = close_selected_setting
+  elseif self._category_filter_focused then
+    self:_handle_category_filter_navigation(input_service)
+  elseif self._header_navigation_control then
+    self:_handle_header_navigation(input_service)
   else
     local selected_navigation_row = self._selected_navigation_row_index
     local selected_navigation_column = self._selected_navigation_column_index
@@ -954,6 +1125,10 @@ DMFOptionsView.close_color_picker = function (self)
 end
 
 DMFOptionsView._update_grid_navigation_selection = function (self)
+  if self._category_filter_focused or self._header_navigation_control then
+    return
+  end
+
   local selected_column_index = self._selected_navigation_column_index
   local selected_row_index = self._selected_navigation_row_index
 
@@ -978,9 +1153,24 @@ DMFOptionsView._update_grid_navigation_selection = function (self)
   end
 end
 
-DMFOptionsView.present_category_widgets = function (self, category, category_entry, tab_scroll_offset)
-  self:_save_selected_category_scroll_offset()
+DMFOptionsView.present_category_widgets = function (self, category, category_entry, tab_scroll_offset, presentation)
+  presentation = presentation or {}
+
+  if not presentation.skip_save_scroll then
+    self:_save_selected_category_scroll_offset()
+  end
+
   self._tab_scroll_animation = nil
+  local category_changed = self._selected_category ~= category or self._selected_category_entry ~= category_entry
+
+  if category_changed and not presentation.preserve_header then
+    self:_clear_header_navigation()
+    local header_height, header_spacing = self._options_header:set_category(category_entry)
+
+    self:_set_options_header_layout(header_height, header_spacing)
+    self._applied_options_filter = ""
+  end
+
   self._selected_category = category
   self._selected_category_entry = category_entry
   local settings_category_widgets = self._settings_category_widgets
@@ -989,18 +1179,15 @@ DMFOptionsView.present_category_widgets = function (self, category, category_ent
   if category_data then
     dmf:set("options_menu_last_selected", category)
 
-    local grid_data = {}
+    local grid_data = OptionsFilter.filter(category_data, self._options_header:filter_text())
     local widgets = {}
     local alignment_widgets = {}
 
-    for i = 1, #category_data do
-      local data = category_data[i]
+    for i = 1, #grid_data do
+      local data = grid_data[i]
 
-      if not data.entry.hidden then
-        grid_data[#grid_data + 1] = data
-        widgets[#widgets + 1] = data.widget
-        alignment_widgets[#alignment_widgets + 1] = data.alignment_widget
-      end
+      widgets[#widgets + 1] = data.widget
+      alignment_widgets[#alignment_widgets + 1] = data.alignment_widget
     end
 
     self._settings_content_widgets = widgets
@@ -1012,25 +1199,177 @@ DMFOptionsView.present_category_widgets = function (self, category, category_ent
     self._settings_content_grid = self:_setup_grid(self._settings_content_widgets, self._settings_alignment_list, grid_scenegraph_id, grid_spacing, false)
 
     self:_setup_content_grid_scrollbar(self._settings_content_grid, scrollbar_widget_id, grid_scenegraph_id, grid_pivot_scenegraph_id)
-    self:_restore_selected_category_scroll_offset(category_entry)
+
+    if presentation.restore_saved_scroll ~= false and self._options_header:filter_text() == "" then
+      self:_restore_selected_category_scroll_offset(category_entry)
+    end
+
     self:_setup_options_tab_indicator(grid_data, category_entry, tab_scroll_offset)
 
     self._navigation_widgets[SETTINGS_GRID] = widgets
     self._navigation_grids[SETTINGS_GRID] = self._settings_content_grid
+    self._first_settings_focusable_widget = nil
+    self._first_settings_focusable_index = nil
 
-    self:_update_grid_navigation_selection()
+    for i = 1, #widgets do
+      local content = widgets[i].content
+
+      if content.hotspot or content.button_hotspot then
+        self._first_settings_focusable_widget = widgets[i]
+        self._first_settings_focusable_index = i
+
+        break
+      end
+    end
+
+    if not self._header_navigation_control then
+      self:_update_grid_navigation_selection()
+    end
   end
 end
 
+DMFOptionsView._clear_header_navigation = function (self)
+  self._header_navigation_control = nil
+
+  if self._options_header then
+    self._options_header:set_focused_control(nil)
+  end
+end
+
+DMFOptionsView._is_category_filter_writing = function (self)
+  return self._category_filter_content and self._category_filter_content.is_writing
+end
+
+DMFOptionsView._clear_category_filter_navigation = function (self)
+  self._category_filter_focused = nil
+
+  if self._category_filter_content then
+    FilterInput.set_focused(self._category_filter_content, false)
+  end
+end
+
+DMFOptionsView._focus_category_filter = function (self)
+  self:_set_selected_navigation_widget(nil)
+  self:_clear_header_navigation()
+
+  self._category_filter_focused = true
+
+  FilterInput.set_focused(self._category_filter_content, true)
+end
+
+DMFOptionsView._category_focus_widget = function (self)
+  local selected_widget = self._selected_category_widget
+  local widgets = self._category_content_widgets
+
+  for i = 1, #widgets do
+    if widgets[i] == selected_widget then
+      return selected_widget
+    end
+  end
+
+  return self._first_category_focusable_widget
+end
+
+DMFOptionsView._focus_first_category_from_filter = function (self)
+  local widget = self:_category_focus_widget()
+
+  if widget then
+    self:_set_selected_navigation_widget(widget)
+  end
+end
+
+DMFOptionsView._handle_category_filter_navigation = function (self, input_service)
+  if self:_is_category_filter_writing() then
+    return
+  end
+
+  if input_service:get("navigate_down_continuous") then
+    self:_focus_first_category_from_filter()
+  elseif input_service:get("navigate_right_continuous") then
+    self:_change_navigation_column(SETTINGS_GRID)
+  elseif not input_service:get("confirm_pressed") and not input_service:get("back") then
+    self._navigation_column_changed_this_frame = false
+  end
+end
+
+DMFOptionsView._focus_header_control = function (self, control)
+  if control == "toggle" and not self._options_header:has_toggle() then
+    control = "filter"
+  end
+
+  self:_set_selected_navigation_widget(nil)
+  self:_clear_category_filter_navigation()
+  self._header_navigation_control = control
+  self._options_header:set_focused_control(control)
+end
+
+DMFOptionsView._focus_category_from_header = function (self)
+  local category_widget = self:_category_focus_widget()
+
+  if category_widget then
+    self:_set_selected_navigation_widget(category_widget)
+  else
+    self:_focus_category_filter()
+  end
+end
+
+DMFOptionsView._focus_first_setting_from_header = function (self)
+  local widget = self._first_settings_focusable_widget
+
+  if widget then
+    self:_set_selected_navigation_widget(widget)
+  end
+end
+
+DMFOptionsView._handle_header_navigation = function (self, input_service)
+  local control = self._header_navigation_control
+
+  if self._options_header:is_filter_writing() then
+    return
+  end
+
+  if input_service:get("navigate_left_continuous") then
+    self:_focus_category_from_header()
+  elseif control == "toggle" then
+    if input_service:get("navigate_down_continuous") then
+      self:_focus_header_control("filter")
+    end
+  elseif control == "filter" then
+    if input_service:get("navigate_up_continuous") and self._options_header:has_toggle() then
+      self:_focus_header_control("toggle")
+    elseif input_service:get("navigate_down_continuous") then
+      self:_focus_first_setting_from_header()
+    end
+  end
+end
+
+DMFOptionsView._on_header_filter_changed = function (self, filter_text, previous_text)
+  if not self._selected_category or not self._selected_category_entry then
+    return
+  end
+
+  if previous_text == "" and filter_text ~= "" then
+    self:_save_selected_category_scroll_offset(true)
+  end
+
+  local tab_scroll_offset = self._options_tab_indicator and self._options_tab_indicator:horizontal_scroll_offset()
+
+  self:present_category_widgets(self._selected_category, self._selected_category_entry, tab_scroll_offset, {
+    preserve_header = true,
+    restore_saved_scroll = filter_text == "",
+    skip_save_scroll = true,
+  })
+end
+
 DMFOptionsView._setup_category_config = function (self, config)
-  if self._category_content_widgets then
-    for i = 1, #self._category_content_widgets do
-      local widget = self._category_content_widgets[i]
+  if self._all_category_content_widgets then
+    for i = 1, #self._all_category_content_widgets do
+      local widget = self._all_category_content_widgets[i]
 
       self:_unregister_widget_name(widget.name)
     end
 
-    self._category_content_widgets = {}
+    self._all_category_content_widgets = nil
   end
 
   local config_categories = config.categories or {}
@@ -1047,8 +1386,12 @@ DMFOptionsView._setup_category_config = function (self, config)
     if valid then
       local entry = {
         widget_type = "settings_button",
+        description = category_config.description,
         display_name = category_display_name,
+        version = category_config.version,
+        author = category_config.author,
         can_be_reset = category_config.can_be_reset,
+        is_togglable = category_config.is_togglable,
         mod_name = category_config.mod_name,
         is_toggle_mods_category = category_config.is_toggle_mods_category,
         pressed_function = function (parent, widget, entry)
@@ -1086,23 +1429,76 @@ DMFOptionsView._setup_category_config = function (self, config)
 
   local scenegraph_id = "grid_content_pivot"
   local callback_name = "cb_on_category_pressed"
-  self._category_content_widgets, self._category_alignment_list = self:_setup_content_widgets(entries, scenegraph_id, callback_name)
+  local widgets, alignment_widgets = self:_setup_content_widgets(entries, scenegraph_id, callback_name)
+  local category_data = {}
+
+  for i = 1, #widgets do
+    category_data[i] = {
+      entry = entries[i],
+      widget = widgets[i],
+      alignment_widget = alignment_widgets[i],
+    }
+  end
+
+  self._all_category_content_widgets = widgets
+  self._category_data = category_data
+  self._navigation_widgets = {}
+  self._navigation_grids = {}
+
+  OptionsFilter.prepare(category_data)
+  self:_present_category_filter(self._category_filter_content.input_text or "", _last_selected_category_widget)
+
+  self._reset_functions_by_category = reset_functions_by_category
+  self._categories_by_display_name = categories_by_display_name
+end
+
+DMFOptionsView._present_category_filter = function (self, filter_text, category_position_widget)
+  local grid_data = OptionsFilter.filter(self._category_data, filter_text)
+  local widgets = {}
+  local alignment_widgets = {}
+
+  for i = 1, #grid_data do
+    local data = grid_data[i]
+
+    widgets[i] = data.widget
+    alignment_widgets[i] = data.alignment_widget
+  end
+
+  self._category_content_widgets = widgets
+  self._category_alignment_list = alignment_widgets
+
   local scrollbar_widget_id = "scrollbar"
   local grid_scenegraph_id = "background"
   local grid_pivot_scenegraph_id = "grid_content_pivot"
   local grid_spacing = _view_settings.category_grid_spacing
-  self._category_content_grid = self:_setup_grid(self._category_content_widgets, self._category_alignment_list, grid_scenegraph_id, grid_spacing, true)
+  self._category_content_grid = self:_setup_grid(widgets, alignment_widgets, grid_scenegraph_id, grid_spacing, true)
 
-  self:_setup_content_grid_scrollbar(self._category_content_grid, scrollbar_widget_id, grid_scenegraph_id, grid_pivot_scenegraph_id)
+  self:_setup_content_grid_scrollbar(self._category_content_grid, scrollbar_widget_id, grid_scenegraph_id, grid_pivot_scenegraph_id, category_position_widget)
 
-  self._reset_functions_by_category = reset_functions_by_category
-  self._categories_by_display_name = categories_by_display_name
-  self._navigation_widgets = {
-    self._category_content_widgets
-  }
-  self._navigation_grids = {
-    self._category_content_grid
-  }
+  self._navigation_widgets[CATEGORIES_GRID] = widgets
+  self._navigation_grids[CATEGORIES_GRID] = self._category_content_grid
+  self._first_category_focusable_widget = widgets[1]
+  self._first_category_focusable_index = widgets[1] and 1 or nil
+
+  if not self._using_cursor_navigation
+    and self._selected_navigation_column_index == CATEGORIES_GRID
+    and not self._category_filter_focused then
+    local widget = self:_category_focus_widget()
+
+    if widget then
+      self:_set_selected_navigation_widget(widget)
+    else
+      self:_focus_category_filter()
+    end
+  end
+end
+
+DMFOptionsView._on_category_filter_changed = function (self, filter_text, previous_text)
+  local category_position_widget = previous_text ~= "" and filter_text == ""
+    and self._selected_category_widget
+    or nil
+
+  self:_present_category_filter(filter_text, category_position_widget)
 end
 
 DMFOptionsView._setup_settings_config = function (self, config)
@@ -1155,6 +1551,17 @@ DMFOptionsView._setup_settings_config = function (self, config)
     end
   end
 
+  for i = 1, #(config.categories or {}) do
+    local category = config.categories[i].display_name
+
+    category_widgets[category] = category_widgets[category] or {}
+    settings_default_values[category] = settings_default_values[category] or {}
+  end
+
+  for _, category_data in pairs(category_widgets) do
+    OptionsFilter.prepare(category_data)
+  end
+
   self._settings_category_default_values = settings_default_values
   self._settings_category_widgets = category_widgets
 end
@@ -1165,16 +1572,7 @@ DMFOptionsView._setup_options_tab_indicator = function (self, grid_data, categor
     self._options_tab_indicator = nil
   end
 
-  local first_option_index
-
-  for i = 1, #grid_data do
-    local entry = grid_data[i].entry
-
-    if not entry.is_category_header and not entry.is_category_description then
-      first_option_index = i
-      break
-    end
-  end
+  local first_option_index = #grid_data > 0 and 1 or nil
 
   if not first_option_index then
     return
@@ -1206,15 +1604,6 @@ DMFOptionsView._setup_options_tab_indicator = function (self, grid_data, categor
   end
 
   local candidates = {}
-  local first_entry = grid_data[first_option_index].entry
-
-  if not first_entry.is_options_tab_candidate then
-    candidates[1] = {
-      display_name = category_entry.display_name,
-      is_mod_tab = true,
-      start_index = first_option_index,
-    }
-  end
 
   for i = first_option_index, #grid_data do
     local data = grid_data[i]
@@ -1237,12 +1626,30 @@ DMFOptionsView._setup_options_tab_indicator = function (self, grid_data, categor
     end
   end
 
-  local scroll_length = self._settings_content_grid:scroll_length()
-  local tabs = {}
+  local valid_candidates = {}
 
   for i = 1, #candidates do
     local candidate = candidates[i]
-    local end_index = i < #candidates and candidates[i + 1].start_index - 1 or #grid_data
+
+    if candidate.focus_widget then
+      valid_candidates[#valid_candidates + 1] = candidate
+    end
+  end
+
+  if not valid_candidates[1] or valid_candidates[1].start_index ~= first_option_index then
+    table.insert(valid_candidates, 1, {
+      display_name = category_entry.display_name,
+      is_mod_tab = true,
+      start_index = first_option_index,
+    })
+  end
+
+  local scroll_length = self._settings_content_grid:scroll_length()
+  local tabs = {}
+
+  for i = 1, #valid_candidates do
+    local candidate = valid_candidates[i]
+    local end_index = i < #valid_candidates and valid_candidates[i + 1].start_index - 1 or #grid_data
     local focus_widget = candidate.focus_widget
     local focus_grid_index = candidate.focus_grid_index
 
@@ -1357,7 +1764,16 @@ DMFOptionsView._update_category_content_widgets = function (self, dt, t)
   local category_content_widgets = self._category_content_widgets
 
   if category_content_widgets then
-    local is_focused_grid = self._selected_navigation_column_index == CATEGORIES_GRID
+    local focused_widget_index = not self._using_cursor_navigation
+      and self._category_content_grid:selected_grid_index()
+
+    if focused_widget_index then
+      self._selected_navigation_row_index = focused_widget_index
+      self._selected_navigation_column_index = CATEGORIES_GRID
+    end
+
+    local is_focused_grid = not self._using_cursor_navigation
+      and self._selected_navigation_column_index == CATEGORIES_GRID
     local selected_category_widget = self._selected_category_widget
 
     for i = 1, #category_content_widgets do
@@ -1385,8 +1801,9 @@ end
 DMFOptionsView._set_tooltip_data = function (self, widget)
   local current_widget = self._tooltip_data and self._tooltip_data.widget
   local localized_text = nil
-  local tooltip_text = widget.content.entry.tooltip_text
-  local disabled_by_list = widget.content.entry.disabled_by
+  local entry = widget.content.entry
+  local tooltip_text = entry.tooltip_text
+  local disabled_by_list = entry.disabled_by
 
   if tooltip_text then
     if type(tooltip_text) == "function" then
@@ -1411,28 +1828,62 @@ DMFOptionsView._set_tooltip_data = function (self, widget)
   local new_y = starting_point[2] + widget.offset[2] - scroll_addition
 
   if current_widget ~= widget or current_widget == widget and new_y ~= current_y then
+    local tooltip = self._widgets_by_name.tooltip
+    local identifier_text = entry.tooltip_identifier or ""
+    local metadata_text = entry.tooltip_metadata or ""
+
     self._tooltip_data = {
       widget = widget,
       text = localized_text,
     }
-    self._widgets_by_name.tooltip.content.text = localized_text
+    tooltip.content.identifier_text = identifier_text
+    tooltip.content.metadata_text = metadata_text
+    tooltip.content.text = localized_text or ""
 
-    local text_style = self._widgets_by_name.tooltip.style.text
     local x_pos = starting_point[1] + widget.offset[1]
-    local width = widget.content.size[1] * 0.5
-    local _, text_height = self:_text_size(localized_text, text_style, {
-      width,
-      0,
-    })
-    local height = text_height
+    local text_width = widget.content.size[1] * 0.5
+    local horizontal_inset = TOOLTIP_HORIZONTAL_PADDING * 0.5
+    local vertical_inset = TOOLTIP_VERTICAL_PADDING * 0.5
+    local width = text_width + TOOLTIP_HORIZONTAL_PADDING
+    local y_offset = vertical_inset
+    local text_layouts = {
+      { identifier_text, tooltip.style.identifier_text },
+      { metadata_text, tooltip.style.metadata_text },
+      { tooltip.content.text, tooltip.style.text },
+    }
 
-    self._widgets_by_name.tooltip.content.size = {
+    for i = 1, #text_layouts do
+      local text = text_layouts[i][1]
+      local style = text_layouts[i][2]
+
+      if text ~= "" then
+        local _, text_height = self:_text_size(text, style, {
+          text_width,
+          TOOLTIP_TEXT_HEIGHT_BOUND,
+        }, true)
+
+        text_height = math.ceil(text_height)
+        style.offset[1] = horizontal_inset
+        style.offset[2] = y_offset
+        style.size = { text_width, text_height }
+        y_offset = y_offset + text_height + TOOLTIP_SECTION_SPACING
+      else
+        style.size = { text_width, 0 }
+      end
+    end
+
+    local height = math.max(
+      y_offset - TOOLTIP_SECTION_SPACING + vertical_inset,
+      TOOLTIP_VERTICAL_PADDING
+    )
+
+    tooltip.content.size = {
       width,
       height,
     }
-    self._widgets_by_name.tooltip.offset[1] = x_pos - width * 0.8
-    self._widgets_by_name.tooltip.offset[2] = math.max(new_y - height, 20)
-    self._widgets_by_name.tooltip.content.visible = true
+    tooltip.offset[1] = x_pos - width * 0.8
+    tooltip.offset[2] = math.max(new_y - height, 20)
+    tooltip.content.visible = true
   end
 end
 
@@ -1816,6 +2267,14 @@ DMFOptionsView._change_navigation_column = function (self, column_index)
       end
     end
   end
+
+  if column_index == CATEGORIES_GRID then
+    self:_focus_category_filter()
+  else
+    self:_focus_header_control("filter")
+  end
+
+  return success
 end
 
 DMFOptionsView._set_default_navigation_widget = function (self)
@@ -1829,6 +2288,11 @@ DMFOptionsView._set_default_navigation_widget = function (self)
 end
 
 DMFOptionsView._set_selected_navigation_widget = function (self, widget)
+  if widget then
+    self:_clear_header_navigation()
+    self:_clear_category_filter_navigation()
+  end
+
   local widget_name = widget and widget.name
   local selected_row, selected_column = nil
   local navigation_widgets = self._navigation_widgets

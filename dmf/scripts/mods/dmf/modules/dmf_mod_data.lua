@@ -37,9 +37,13 @@ function DMFMod:init(mod_name)
   set_internal_data(self, "is_mutator",    false)
 
   local vanilla_mod_data = Managers.mod._mods[Managers.mod._mod_load_index]
+  local mod_file_data = vanilla_mod_data.data
+
   set_internal_data(self, "workshop_id",   vanilla_mod_data.id)
   set_internal_data(self, "workshop_name", vanilla_mod_data.name)
   set_internal_data(self, "mod_handle",    vanilla_mod_data.handle)
+  set_internal_data(self, "version",       mod_file_data.version)
+  set_internal_data(self, "author",        mod_file_data.author)
 
   print(string.format("Init DMF mod '%s' [workshop_name: '%s', workshop_id: %s]", mod_name, vanilla_mod_data.name,
                                                                                    vanilla_mod_data.id))
@@ -58,6 +62,8 @@ end
     - name           (system mod name)
     - readable_name  (readable mod name)
     - description    (mod description)
+    - version        (version defined by the .mod file)
+    - author         (author defined by the .mod file)
     - is_togglable   (if the mod can be disabled/enabled)
     - is_enabled     (if the mod is curently enabled)
     - is_mutator     (if the mod is mutator)

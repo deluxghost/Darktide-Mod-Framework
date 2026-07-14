@@ -15,6 +15,10 @@ local dmf_options_view_settings = {
     0,
     10
   },
+  settings_header_height = 140,
+  settings_header_spacing = 20,
+  category_filter_height = 44,
+  category_filter_spacing = 12,
   grid_blur_edge_size = {
     8,
     8
