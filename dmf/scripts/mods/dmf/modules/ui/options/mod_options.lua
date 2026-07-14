@@ -1,6 +1,8 @@
 ---@class DMFMod
 local dmf = get_mod("DMF")
 
+local OptionsDisplayUtils = dmf:io_dofile("dmf/scripts/mods/dmf/modules/ui/options/options_display_utils")
+
 local OptionsUtilities = require("scripts/utilities/ui/options")
 
 local _type_template_map = {}
@@ -26,44 +28,6 @@ local ERRORS = {
 -- ####################################################################################################################
 -- ##### Local functions ##############################################################################################
 -- ####################################################################################################################
-
--- #####################
--- ###### Header #######
--- #####################
-
--- Create header template
-local create_header_template = function (self, params)
-
-  local template = {
-    category = params.category,
-    display_name = params.readable_mod_name or params.title,
-    group_name = params.mod_name,
-    is_category_header = true,
-    tooltip_text = params.tooltip,
-    widget_type = "group_header",
-  }
-  return template
-end
-_type_template_map["header"] = create_header_template
-
--- ##########################
--- ###### Description #######
--- ##########################
-
--- Create description template
-local create_description_template = function (self, params)
-
-  local template = {
-    category = params.category,
-    group_name = params.mod_name,
-    display_name = params.description,
-    is_category_description = params.is_category_description,
-    widget_type = "description",
-    after = params.after
-  }
-  return template
-end
-_type_template_map["description"] = create_description_template
 
 -- ##########################
 -- ###### Group #############
@@ -223,6 +187,7 @@ _type_template_map["checkbox"] = create_checkbox_template
 
 -- Create mod toggle template
 local create_mod_toggle_template = function (self, params)
+  local tooltip_metadata = OptionsDisplayUtils.metadata_text(params.version, params.author)
   local template = {
     after = params.after,
     category = params.category,
@@ -231,7 +196,9 @@ local create_mod_toggle_template = function (self, params)
     display_name = params.readable_mod_name or params.mod_name,
     indentation_level = 0,
     require_restart = params.require_restart,
-    tooltip_text = params.description,
+    tooltip_identifier = params.mod_name ~= "" and params.mod_name or nil,
+    tooltip_metadata = tooltip_metadata ~= "" and tooltip_metadata or nil,
+    tooltip_text = params.description ~= "" and params.description or nil,
     value_type = "boolean",
   }
 
@@ -449,6 +416,7 @@ end
 local function create_toggle_category(self, categories)
   local category = {
     can_be_reset            = false,
+    description             = dmf:localize("toggle_mods_description"),
     display_name            = dmf:localize("toggle_mods"),
     custom                  = true,
     is_toggle_mods_category = true,
@@ -462,25 +430,16 @@ end
 local function create_mod_category(self, categories, widget_data)
   local category = {
     can_be_reset = widget_data.can_be_reset or true,
+    description  = widget_data.description,
     display_name = widget_data.readable_mod_name or widget_data.mod_name or "",
+    version      = widget_data.version,
+    author       = widget_data.author,
     custom       = true,
+    is_togglable = widget_data.is_togglable,
     mod_name     = widget_data.mod_name,
   }
   categories[#categories + 1] = category
   return category
-end
-
-
--- Create an option template and handle index offsets
-local function create_option_template(self, widget_data, category_name, index_offset)
-  local template = widget_data_to_template(self, widget_data)
-  if template then
-    template.custom = true
-    template.category = category_name
-    template.after = template.after and template.after + index_offset or nil
-
-    return template
-  end
 end
 
 
@@ -651,37 +610,6 @@ dmf.create_mod_options_settings = function (self, options_templates)
 
   -- Create the toggle category
   local toggle_category = create_toggle_category(self, categories)
-  local toggle_index_offset = 0
-
-  -- Create the toggle category header
-  local toggle_header_data = {
-    type = "header",
-    category = toggle_category,
-    title = dmf:localize("toggle_mods"),
-    mod_name = "dmf",
-    tooltip = dmf:localize("toggle_mods"),
-  }
-  local toggle_header = create_option_template(self, toggle_header_data, toggle_category.display_name, toggle_index_offset)
-  if toggle_header then
-    settings[#settings + 1] = toggle_header
-  end
-
-  -- Create the toggle category description
-  local desc_widget_data = {
-    mod_name = "dmf",
-    description = dmf:localize("toggle_mods_description"),
-    category = toggle_category.display_name,
-    display_name = toggle_category.display_name,
-    is_category_description = true,
-    after = #settings,
-    type = "description"
-  }
-  local desc_template = create_option_template(self, desc_widget_data, toggle_category.display_name, toggle_index_offset)
-
-  if desc_template then
-    settings[#settings + 1] = desc_template
-    toggle_index_offset = toggle_index_offset + 1
-  end
 
   -- Create a toggle for each mod; non-toggleable mods' toggles are disabled
   for _, mod_data in ipairs(dmf.options_widgets_data) do
@@ -689,16 +617,19 @@ dmf.create_mod_options_settings = function (self, options_templates)
       mod_name = mod_data[1].mod_name,
       readable_mod_name = mod_data[1].readable_mod_name or mod_data[1].title,
       description = mod_data[1].description,
+      version = mod_data[1].version,
+      author = mod_data[1].author,
       disabled = not mod_data[1].is_togglable,
       category = toggle_category.display_name,
       after = #settings,
       type = "mod_toggle"
     }
 
-    local toggle_template = create_option_template(self, toggle_widget_data, toggle_category.display_name, toggle_index_offset)
+    local toggle_template = widget_data_to_template(self, toggle_widget_data)
     if toggle_template then
+      toggle_template.custom = true
+      toggle_template.category = toggle_category.display_name
       settings[#settings + 1] = toggle_template
-      toggle_index_offset = toggle_index_offset + 1
     end
   end
 
@@ -714,42 +645,14 @@ dmf.create_mod_options_settings = function (self, options_templates)
         widgets = mod_data,
       }
 
-      local index_offset = 0
-
-      -- Create the category header
-      local template = create_option_template(self, mod_data[1], category.display_name, index_offset)
-      if template then
-        settings[#settings + 1] = template
-      end
-
-      -- Create the mod description
-      if mod_data[1].description then
-        local desc_widget_data = {
-          mod_name = mod_data[1].mod_name,
-          description = mod_data[1].description,
-          category = category.display_name,
-          display_name = category.display_name,
-          is_category_description = true,
-          after = #settings,
-          type = "description"
-        }
-        local desc_template = create_option_template(self, desc_widget_data, category.display_name, index_offset)
-
-        if desc_template then
-          settings[#settings + 1] = desc_template
-          index_offset = index_offset + 1
-        end
-      end
-
       -- Populate the category with options taken from the remaining options data
       for i = 2, #mod_data do
         local widget_data = mod_data[i]
 
-        template = widget_data_to_template(self, widget_data)
+        local template = widget_data_to_template(self, widget_data)
         if template then
           template.custom = true
           template.category = category.display_name
-          template.after = template.after + index_offset
           template.is_options_tab_candidate = widget_data.depth == 0
             and widget_data.has_sub_widgets
             and has_focusable_descendant(mod_data, i)

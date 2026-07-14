@@ -11,9 +11,7 @@ local DropdownPassTemplates = require("scripts/ui/pass_templates/dropdown_pass_t
 local InputUtils = require("scripts/managers/input/input_utils")
 local KeybindPassTemplates = require("scripts/ui/pass_templates/keybind_pass_templates")
 local SliderPassTemplates = require("scripts/ui/pass_templates/slider_pass_templates")
-local UIFonts = require("scripts/managers/ui/ui_fonts")
 local UIFontSettings = require("scripts/managers/ui/ui_font_settings")
-local UIRenderer = require("scripts/managers/ui/ui_renderer")
 
 local grid_size = _view_settings.grid_size
 local grid_width = grid_size[1]
@@ -34,13 +32,6 @@ value_font_style.offset = {
   settings_grid_width - settings_value_width + 25,
   0,
   8
-}
-
-local description_font_style = table.clone(UIFontSettings.list_button)
-description_font_style.offset = {
-  25,
-  0,
-  3
 }
 
 local header_font_style = table.clone(UIFontSettings.header_2)
@@ -801,46 +792,5 @@ blueprints.keybind = {
 }
 
 blueprints.text = TextWidget.create_blueprint(settings_grid_width, settings_value_width, settings_value_height)
-
-local description_font_style = table.clone(UIFontSettings.body_small)
-description_font_style.offset = {
-  25,
-  0,
-  3
-}
-description_font_style.text_horizontal_alignment = "left"
-description_font_style.text_vertical_alignment = "center"
-description_font_style.hover_text_color = Color.ui_brown_super_light(255, true)
-
-blueprints.description = {
-  size = {
-    settings_grid_width - 225,
-    settings_value_height
-  },
-  pass_template = {
-    {
-      value_id = "text",
-      pass_type = "text",
-      style_id = "text",
-      style = description_font_style,
-      value = Localize("loc_settings_option_unavailable")
-    }
-  },
-  init = function (parent, widget, entry, callback_name)
-    local content = widget.content
-    local style = widget.style
-    local text_style = style.text
-    local display_text = entry.display_name
-    local ui_renderer = parent._ui_renderer
-    local size = content.size
-    local text_options = UIFonts.get_font_options_by_style(text_style)
-    local _, height = UIRenderer.text_size(ui_renderer, display_text, text_style.font_type, text_style.font_size, size, text_options)
-    size[2] = math.ceil(height)
-    content.text = display_text
-  end,
-  update = function (parent, widget, input_service, dt, t)
-    return
-  end
-}
 
 return settings("DMFOptionsViewContentBlueprints", blueprints)
