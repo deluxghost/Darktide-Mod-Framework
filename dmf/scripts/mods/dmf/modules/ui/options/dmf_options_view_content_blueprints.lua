@@ -3,6 +3,7 @@ local dmf = get_mod("DMF")
 
 local _view_settings = dmf:io_dofile("dmf/scripts/mods/dmf/modules/ui/options/dmf_options_view_settings")
 local ColorWidget = dmf:io_dofile("dmf/scripts/mods/dmf/modules/ui/options/color/color_widget")
+local NumericInput = dmf:io_dofile("dmf/scripts/mods/dmf/modules/ui/options/numeric/numeric_input")
 local TextWidget = dmf:io_dofile("dmf/scripts/mods/dmf/modules/ui/options/text/text_widget")
 
 local ButtonPassTemplates = require("scripts/ui/pass_templates/button_pass_templates")
@@ -314,10 +315,13 @@ blueprints.value_slider = {
     settings_value_height
   },
   pass_template_function = function (parent, config, size)
-    return SliderPassTemplates.settings_value_slider(size[1], settings_value_height, settings_value_width, true)
+    local passes = SliderPassTemplates.settings_value_slider(size[1], settings_value_height, settings_value_width, true)
+
+    return NumericInput.add_passes(parent, config, passes, settings_value_height)
   end,
   init = function (parent, widget, entry, callback_name, changed_callback_name)
     slider_init_function(parent, widget, entry, callback_name, changed_callback_name)
+    NumericInput.init(widget, entry)
   end,
   update = function (parent, widget, input_service, dt, t)
     local content = widget.content
@@ -326,6 +330,11 @@ blueprints.value_slider = {
     local is_disabled = entry.disabled or false
     content.disabled = is_disabled
     local using_gamepad = not parent:using_cursor_navigation()
+
+    if NumericInput.update(parent, widget, entry, input_service, using_gamepad, is_disabled) then
+      return false
+    end
+
     local min_value = entry.min_value
     local max_value = entry.max_value
     local get_function = entry.get_function

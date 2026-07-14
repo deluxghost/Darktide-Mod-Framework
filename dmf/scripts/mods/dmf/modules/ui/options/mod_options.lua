@@ -108,6 +108,7 @@ local create_value_slider_template = function (self, params)
   template.after = params.parent_index
   template.category = params.category
   template.indentation_level = params.depth
+  template.num_decimals = params.num_decimals
   template.tooltip_text = params.tooltip
 
   return template
