@@ -528,6 +528,25 @@ blueprints.slider = {
 }
 
 local max_visible_options = _view_settings.max_visible_dropdown_options or 5
+
+local function apply_dropdown_icon_style(style, default_style, icon_style)
+  table.create_copy(style, default_style)
+
+  if not icon_style then
+    return
+  end
+
+  table.merge_recursive(style, icon_style)
+
+  local offset = icon_style.offset
+
+  if offset then
+    for i = 1, #default_style.offset do
+      style.offset[i] = default_style.offset[i] + (offset[i] or 0)
+    end
+  end
+end
+
 blueprints.dropdown = {
   size = {
     settings_grid_width,
@@ -565,6 +584,14 @@ blueprints.dropdown = {
     content.number_format = number_format
     content.options_by_value = options_by_value
     content.options = options
+    content.default_icon_styles = {
+      value = table.clone(widget.style.icon),
+      options = {},
+    }
+
+    for i = 1, num_visible_options do
+      content.default_icon_styles.options[i] = table.clone(widget.style["option_icon_" .. i])
+    end
 
     content.hotspot.pressed_callback = function ()
       local is_disabled = entry.disabled or false
@@ -641,8 +668,15 @@ blueprints.dropdown = {
     local preview_option = options_by_value[value]
     local preview_option_value = preview_option and preview_option.value
     local preview_value = preview_option and preview_option.display_name or Managers.localization:localize("loc_settings_option_unavailable")
+    local preview_icon = preview_option and preview_option.icon
+    local preview_icon_style = preview_option and preview_option.icon_style
+    local has_preview_icon = not not preview_icon
 
     content.value_text = preview_value
+    content.value_icon = preview_icon
+    style.text.offset = has_preview_icon and style.text.icon_offset or style.text.default_offset
+    apply_dropdown_icon_style(style.icon, content.default_icon_styles.value, preview_icon_style)
+    style.icon.visible = has_preview_icon
 
     local widget_type = widget.type
     local template = blueprints[widget_type]
@@ -726,6 +760,7 @@ blueprints.dropdown = {
       end
 
       local option_text_id = "option_text_" .. option_index
+      local option_icon_id = "option_icon_" .. option_index
       local option_hotspot_id = "option_hotspot_" .. option_index
       local outline_style_id = "outline_" .. option_index
       local option_hotspot = content[option_hotspot_id]
@@ -740,10 +775,26 @@ blueprints.dropdown = {
       end
 
       local option_display_name = option.display_name
+      local option_icon = option.icon
+      local option_icon_style = option.icon_style
+      local has_option_icon = not not option_icon
+
+      content[option_icon_id] = option_icon
       content[option_text_id] = option_display_name
       local options_y = size[2] * option_index
       style[option_hotspot_id].offset[2] = grow_downwards and options_y or -options_y
       style[option_text_id].offset[2] = grow_downwards and options_y or -options_y
+      apply_dropdown_icon_style(
+        style[option_icon_id],
+        content.default_icon_styles.options[option_index],
+        option_icon_style
+      )
+      style[option_icon_id].offset[2] = (grow_downwards and options_y or -options_y)
+        + (option_icon_style and option_icon_style.offset and option_icon_style.offset[2] or 0)
+      style[option_text_id].offset[1] = has_option_icon
+        and style[option_text_id].icon_offset[1]
+        or style[option_text_id].default_offset[1]
+      style[option_icon_id].visible = has_option_icon
       local entry_length = using_scrollbar and settings_value_width - style.scrollbar_hotspot.size[1] or settings_value_width
       style[outline_style_id].size[1] = entry_length
       style[option_text_id].size[1] = settings_value_width
