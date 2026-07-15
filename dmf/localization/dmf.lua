@@ -84,11 +84,11 @@ return {
     ja = "開発者モード",
   },
   developer_mode_description = {
-    en = "Allows you to reload DMF and mods (CTRL+SHIFT+R), gives you access to some debug features.",
-    es = "Permite recargar los mods (CTRL+SHIFT+R) y configurar herramientas de depuración.",
-    ru = "Позволяет перезагружать DMF и моды (CTRL+SHIFT+R), даёт доступ к инструментам отладки.",
-    ["zh-cn"] = "允许重新加载 DMF 和模组（CTRL+SHIFT+R），并启用一些调试功能。",
-    ja = "DMFとModのリロード (CTRL+SHIFT+R) や、いくつかのデバッグ機能へのアクセスを可能にします。",
+    en = "Allows you to reload DMF and mods and gives you access to some debug features.",
+    es = "Permite recargar los mods y configurar herramientas de depuración.",
+    ru = "Позволяет перезагружать DMF и моды и даёт доступ к инструментам отладки.",
+    ["zh-cn"] = "允许重新加载 DMF 和模组，并启用一些调试功能。",
+    ja = "DMFとModのリロードや、いくつかのデバッグ機能へのアクセスを可能にします。",
   },
   show_developer_console = {
     en = "Show Developer Console",
@@ -126,6 +126,14 @@ return {
     ru = "Открыть/закрыть консоль разработчика",
     ["zh-cn"] = "开关开发者控制台",
     ja = "開発者コンソールの表示/非表示",
+  },
+  reload_mods = {
+    en = "Reload Mods",
+    ["zh-cn"] = "重新加载模组",
+  },
+  reload_mods_description = {
+    en = "Reloads all mods.",
+    ["zh-cn"] = "重新加载所有模组。",
   },
   show_network_debug_info = {
     en = "Log Network Calls",
