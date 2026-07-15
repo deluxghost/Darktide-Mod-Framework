@@ -14,6 +14,32 @@ local TOGGLE_MODS_SCROLL_OFFSET_SETTING = "options_menu_toggle_mods_scroll_offse
 local SHOW_MOD_OPTION_IDS_SETTING = "show_mod_option_ids"
 local FAVORITE_MODS_SETTING = "options_menu_favorite_mods"
 
+local function values_equal(left, right)
+  if type(left) == "table" and type(right) == "table" then
+    return table.equals(left, right)
+  end
+
+  return left == right
+end
+
+local function setting_requires_restart(entry, option_value)
+  if entry.require_restart then
+    return true
+  end
+
+  if option_value ~= nil and entry.options then
+    for i = 1, #entry.options do
+      local option = entry.options[i]
+
+      if option.value == option_value then
+        return option.require_restart or false
+      end
+    end
+  end
+
+  return false
+end
+
 local function update_scroll_amount(scrollbar_widget)
   local content = scrollbar_widget.content
   local scroll_length = content.scroll_length
@@ -291,8 +317,20 @@ DMFOptionsView.cb_reset_category_to_default = function (self)
                 local on_activated = setting.on_activated
 
                 if on_activated then
+                  local current_value = setting.get_function and setting:get_function()
+
                   on_activated(default_value, setting)
+
+                  local updated_value = setting.get_function and setting:get_function()
+
+                  if not values_equal(current_value, updated_value) then
+                    self:cb_on_settings_changed(nil, setting, updated_value)
+                  end
                 end
+              end
+
+              if self._dynamic_options_changed_entry and self._applied_options_filter == nil then
+                self._applied_options_filter = self._options_header:filter_text()
               end
             end
           end
@@ -2307,23 +2345,8 @@ DMFOptionsView.cb_on_settings_changed = function (self, widget, entry, option_va
     self._applied_options_filter = nil
   end
 
-  if not self._require_restart then
-
-    -- Entry supersedes option
-    if entry.require_restart then
-      self._require_restart = true
-
-    -- Search by option value
-    elseif option_value then
-      for i = 1, #entry.options do
-        local option = entry.options[i]
-
-        if option.value == option_value then
-          self._require_restart = option.require_restart
-          break
-        end
-      end
-    end
+  if not self._require_restart and setting_requires_restart(entry, option_value) then
+    self._require_restart = true
   end
 
   if entry.controls_sub_widgets then
