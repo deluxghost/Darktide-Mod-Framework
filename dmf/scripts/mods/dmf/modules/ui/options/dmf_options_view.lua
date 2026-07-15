@@ -11,6 +11,7 @@ local DEFAULT_SCROLL_STEP = 300
 local PAGE_OVERLAP_RATIO = 0.1
 local MOD_SCROLL_OFFSETS_SETTING = "options_menu_mod_scroll_offsets"
 local TOGGLE_MODS_SCROLL_OFFSET_SETTING = "options_menu_toggle_mods_scroll_offset"
+local SHOW_MOD_OPTION_IDS_SETTING = "show_mod_option_ids"
 
 local function update_scroll_amount(scrollbar_widget)
   local content = scrollbar_widget.content
@@ -557,6 +558,7 @@ DMFOptionsView._draw_grid = function (self, grid, widgets, interaction_widget, d
   local ui_renderer = self._ui_offscreen_renderer
   local ui_scenegraph = self._ui_scenegraph
   local color_picker_blocks_background = self._color_picker or self._color_picker_block_input_this_frame
+  local show_setting_ids = dmf:get(SHOW_MOD_OPTION_IDS_SETTING)
 
   UIRenderer.begin_pass(ui_renderer, ui_scenegraph, input_service, dt, render_settings)
 
@@ -575,9 +577,11 @@ DMFOptionsView._draw_grid = function (self, grid, widgets, interaction_widget, d
         if hotspot then
           hotspot.force_disabled = not is_grid_hovered
           local is_active = hotspot.is_focused or hotspot.is_hover
+          local entry = widget.content.entry
+          local identifier = entry and (entry.tooltip_identifier or show_setting_ids and entry.setting_id)
 
-          if not color_picker_blocks_background and is_active and widget.content.entry and (widget.content.entry.tooltip_text or widget.content.entry.tooltip_identifier or widget.content.entry.tooltip_metadata or widget.content.entry.disabled_by and not table.is_empty(widget.content.entry.disabled_by)) then
-            self:_set_tooltip_data(widget)
+          if not color_picker_blocks_background and is_active and entry and (entry.tooltip_text or identifier or entry.tooltip_metadata or entry.disabled_by and not table.is_empty(entry.disabled_by)) then
+            self:_set_tooltip_data(widget, identifier)
           end
         end
 
@@ -1801,8 +1805,11 @@ DMFOptionsView._update_category_content_widgets = function (self, dt, t)
   end
 end
 
-DMFOptionsView._set_tooltip_data = function (self, widget)
+DMFOptionsView._set_tooltip_data = function (self, widget, identifier_text)
+  identifier_text = identifier_text or ""
+
   local current_widget = self._tooltip_data and self._tooltip_data.widget
+  local current_identifier = self._tooltip_data and self._tooltip_data.identifier
   local localized_text = nil
   local entry = widget.content.entry
   local tooltip_text = entry.tooltip_text
@@ -1830,12 +1837,12 @@ DMFOptionsView._set_tooltip_data = function (self, widget)
   local scroll_addition = self._settings_content_grid:length_scrolled()
   local new_y = starting_point[2] + widget.offset[2] - scroll_addition
 
-  if current_widget ~= widget or current_widget == widget and new_y ~= current_y then
+  if current_widget ~= widget or current_widget == widget and (new_y ~= current_y or identifier_text ~= current_identifier) then
     local tooltip = self._widgets_by_name.tooltip
-    local identifier_text = entry.tooltip_identifier or ""
     local metadata_text = entry.tooltip_metadata or ""
 
     self._tooltip_data = {
+      identifier = identifier_text,
       widget = widget,
       text = localized_text,
     }
@@ -2157,6 +2164,10 @@ DMFOptionsView.cb_on_settings_pressed = function (self, widget, entry)
 end
 
 DMFOptionsView.cb_on_settings_changed = function (self, widget, entry, option_value)
+  if entry.setting_id == SHOW_MOD_OPTION_IDS_SETTING and self._options_header:filter_text() ~= "" then
+    self._applied_options_filter = nil
+  end
+
   if not self._require_restart then
 
     -- Entry supersedes option

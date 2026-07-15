@@ -49,6 +49,11 @@ dmf_mod_data.options = {
           type          = "checkbox",
           default_value = true
         },
+        {
+          setting_id    = "show_mod_option_ids",
+          type          = "checkbox",
+          default_value = false
+        },
         -- {
         --   setting_id    = "show_network_debug_info",
         --   type          = "checkbox",

@@ -400,6 +400,10 @@ local function widget_data_to_template(self, data)
   if data and data.type and type(data.type) == "string" and _type_template_map[data.type] then
     local template = _type_template_map[data.type](self, data)
 
+    if data.type ~= "group" then
+      template.setting_id = data.setting_id
+    end
+
     if data.has_sub_widgets and (data.type == "checkbox" or data.type == "dropdown") then
       template.controls_sub_widgets = true
       template.mod_name = data.mod_name

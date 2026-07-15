@@ -112,6 +112,14 @@ return {
     en = "Also displays messages written to the log file in the developer console.",
     ["zh-cn"] = "同时在开发者控制台中显示最终写入日志文件的消息。",
   },
+  show_mod_option_ids = {
+    en = "Show Mod Option IDs",
+    ["zh-cn"] = "显示模组选项 ID",
+  },
+  show_mod_option_ids_description = {
+    en = "Displays the setting ID at the top of each mod option tooltip.",
+    ["zh-cn"] = "在每个模组选项的提示文本顶部显示设置 ID。",
+  },
   toggle_developer_console = {
     en = "Toggle Developer Console",
     es = "Abrir el registro (log) a tiempo real",
