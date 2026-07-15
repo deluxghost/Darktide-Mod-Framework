@@ -45,6 +45,15 @@ dmf_mod_data.options = {
           function_name   = "toggle_developer_console"
         },
         {
+          setting_id      = "reload_mods",
+          type            = "keybind",
+          default_value   = {"r", "left shift", "left ctrl"},
+          keybind_global  = true,
+          keybind_trigger = "pressed",
+          keybind_type    = "function_call",
+          function_name   = "request_mod_reload"
+        },
+        {
           setting_id    = "log_to_developer_console",
           type          = "checkbox",
           default_value = true
@@ -213,6 +222,12 @@ dmf_mod_data.options = {
 -- ##### DMF internal functions and variables #########################################################################
 -- ####################################################################################################################
 
+dmf.request_mod_reload = function ()
+  if dmf:get("developer_mode") then
+    Managers.mod._reload_requested = true
+  end
+end
+
 dmf.on_setting_changed = function (setting_id)
 
   if setting_id == "dmf_options_scrolling_speed" then
@@ -273,6 +288,11 @@ end
 -- ####################################################################################################################
 -- ##### Script #######################################################################################################
 -- ####################################################################################################################
+
+-- Reloading is handled by the configurable DMF keybind.
+dmf:hook_origin(CLASS.ModManager, "_check_reload", function ()
+  return false
+end)
 
 dmf.initialize_mod_data(dmf, dmf_mod_data)
 
