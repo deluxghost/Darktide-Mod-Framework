@@ -431,6 +431,19 @@ local function create_toggle_category(self, categories)
 end
 
 
+local function is_favorited_mod(mod_name)
+  local favorited_mods = dmf:get("options_menu_favorite_mods")
+
+  for i = 1, #favorited_mods do
+    if favorited_mods[i] == mod_name then
+      return true
+    end
+  end
+
+  return false
+end
+
+
 --  Add a mod category to the options view categories
 local function create_mod_category(self, categories, widget_data)
   local category = {
@@ -440,6 +453,7 @@ local function create_mod_category(self, categories, widget_data)
     version      = widget_data.version,
     author       = widget_data.author,
     custom       = true,
+    is_favorited = is_favorited_mod(widget_data.mod_name),
     is_togglable = widget_data.is_togglable,
     mod_name     = widget_data.mod_name,
   }

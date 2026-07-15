@@ -53,12 +53,6 @@ local function initialize_header_data(mod, data)
   new_data.is_togglable      = mod:get_internal_data("is_togglable") and not mod:get_internal_data("is_mutator")
   new_data.is_collapsed      = dmf:get("options_menu_collapsed_mods")[mod:get_name()]
 
-  for _, favorited_mod_name in ipairs(dmf:get("options_menu_favorite_mods")) do
-    if favorited_mod_name == new_data.mod_name then
-      new_data.is_favorited  = true
-    end
-  end
-
   return new_data
 end
 
