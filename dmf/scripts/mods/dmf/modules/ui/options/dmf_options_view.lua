@@ -12,6 +12,7 @@ local PAGE_OVERLAP_RATIO = 0.1
 local MOD_SCROLL_OFFSETS_SETTING = "options_menu_mod_scroll_offsets"
 local TOGGLE_MODS_SCROLL_OFFSET_SETTING = "options_menu_toggle_mods_scroll_offset"
 local SHOW_MOD_OPTION_IDS_SETTING = "show_mod_option_ids"
+local FAVORITE_MODS_SETTING = "options_menu_favorite_mods"
 
 local function update_scroll_amount(scrollbar_widget)
   local content = scrollbar_widget.content
@@ -62,6 +63,7 @@ local ViewElementKeybindPopup = require("scripts/ui/view_elements/view_element_k
 local ViewElementColorPicker = dmf:io_dofile("dmf/scripts/mods/dmf/modules/ui/options/color/color_picker")
 local FilterInput = dmf:io_dofile("dmf/scripts/mods/dmf/modules/ui/options/header/filter_input")
 local OptionsFilter = dmf:io_dofile("dmf/scripts/mods/dmf/modules/ui/options/header/options_filter")
+local OptionsDisplayUtils = dmf:io_dofile("dmf/scripts/mods/dmf/modules/ui/options/options_display_utils")
 local ViewElementOptionsHeader = dmf:io_dofile("dmf/scripts/mods/dmf/modules/ui/options/header/options_header")
 local ViewElementOptionsTabIndicator = dmf:io_dofile("dmf/scripts/mods/dmf/modules/ui/options/tab_indicator/options_tab_indicator")
 
@@ -81,6 +83,42 @@ local function grid_item_is_fully_visible(grid, index)
 
   return target_progress == nil
     or math.abs(target_progress - grid:scrollbar_progress()) <= GRID_SCROLL_EPSILON
+end
+
+local function sort_pinned_categories(categories)
+  local toggle_categories = {}
+  local pinned_categories = {}
+  local regular_categories = {}
+
+  table.sort(categories, function (left, right)
+    local left_entry = left.entry or left
+    local right_entry = right.entry or right
+
+    return left_entry.original_index < right_entry.original_index
+  end)
+
+  for i = 1, #categories do
+    local category = categories[i]
+    local entry = category.entry or category
+    local target = entry.is_toggle_mods_category and toggle_categories
+      or entry.is_favorited and pinned_categories
+      or regular_categories
+
+    target[#target + 1] = category
+  end
+
+  table.clear(categories)
+  table.append(categories, toggle_categories)
+  table.append(categories, pinned_categories)
+  table.append(categories, regular_categories)
+end
+
+local function update_category_pin_display(category_data)
+  local entry = category_data.entry
+
+  category_data.widget.content.text = entry.is_favorited
+    and OptionsDisplayUtils.pinned_category_name(entry.display_name)
+    or entry.display_name
 end
 
 local DMFOptionsView = class("DMFOptionsView", "BaseView")
@@ -337,7 +375,9 @@ DMFOptionsView._setup_options_header = function (self)
   self._options_header = self:_add_element(ViewElementOptionsHeader, "options_header", 20, {
     panel_x = header_scenegraph.world_position[1],
     panel_y = header_scenegraph.world_position[2],
+    get_pin_value = callback(self, "_get_header_pin_value"),
     get_toggle_value = callback(self, "_get_header_toggle_value"),
+    on_pin_changed = callback(self, "_on_header_pin_changed"),
     on_toggle_changed = callback(self, "_on_header_toggle_changed"),
   })
   self._applied_options_filter = ""
@@ -373,19 +413,93 @@ DMFOptionsView._on_header_toggle_changed = function (self, category_entry, value
   dmf.mod_state_changed(category_entry.mod_name, value)
 end
 
-DMFOptionsView._setup_content_grid_scrollbar = function (self, grid, widget_id, grid_scenegraph_id, grid_pivot_scenegraph_id, category_position_widget)
+DMFOptionsView._get_header_pin_value = function (self, category_entry)
+  return category_entry.is_favorited and true or false
+end
+
+DMFOptionsView._on_header_pin_changed = function (self, category_entry, value)
+  local mod_name = category_entry.mod_name
+  local favorited_mods = dmf:get(FAVORITE_MODS_SETTING)
+  local updated_favorited_mods = {}
+  local category_scroll_progress = self._category_content_grid:scrollbar_progress()
+
+  for i = 1, #favorited_mods do
+    if favorited_mods[i] ~= mod_name then
+      updated_favorited_mods[#updated_favorited_mods + 1] = favorited_mods[i]
+    end
+  end
+
+  if value then
+    updated_favorited_mods[#updated_favorited_mods + 1] = mod_name
+  end
+
+  dmf:set(FAVORITE_MODS_SETTING, updated_favorited_mods)
+
+  category_entry.is_favorited = value
+
+  local categories = self._options_templates.categories
+
+  for i = 1, #categories do
+    local category = categories[i]
+
+    if category.mod_name == mod_name then
+      category.is_favorited = value
+
+      break
+    end
+  end
+
+  sort_pinned_categories(self._category_data)
+
+  local selected_category_entry = self._selected_category_entry
+  local selected_category_widget
+
+  for i = 1, #self._category_data do
+    local data = self._category_data[i]
+    local is_selected = data.entry == selected_category_entry
+    local hotspot = data.widget.content.hotspot
+
+    update_category_pin_display(data)
+    hotspot.is_selected = is_selected
+    hotspot.anim_select_progress = is_selected and 1 or 0
+
+    if is_selected then
+      selected_category_widget = data.widget
+    end
+  end
+
+  self._selected_category_widget = selected_category_widget
+
+  OptionsFilter.prepare(self._category_data)
+  self:_present_category_filter(
+    self._category_filter_content.input_text or "",
+    selected_category_widget,
+    category_scroll_progress
+  )
+end
+
+DMFOptionsView._setup_content_grid_scrollbar = function (self, grid, widget_id, grid_scenegraph_id, grid_pivot_scenegraph_id, category_position_widget, initial_scroll_progress)
   local widgets_by_name = self._widgets_by_name
   local scrollbar_widget = widgets_by_name[widget_id]
 
   grid:assign_scrollbar(scrollbar_widget, grid_pivot_scenegraph_id, grid_scenegraph_id, true)
   update_scroll_amount(scrollbar_widget)
 
+  if initial_scroll_progress ~= nil and widget_id == "scrollbar" then
+    grid:set_scrollbar_progress(initial_scroll_progress)
+    grid:_update_scroll_progress(true)
+  end
+
   -- Scroll the category grid to the requested category widget
   if category_position_widget and widget_id == "scrollbar" then
     local index = grid:index_by_widget(category_position_widget)
-    local scroll_progress = index and grid:get_scrollbar_percentage_by_index(index)
+    local scroll_progress = index
+      and grid:get_scrollbar_percentage_by_index(index)
+      or initial_scroll_progress
+      or grid:scrollbar_progress()
 
     grid:set_scrollbar_progress(scroll_progress or 0)
+    grid:_update_scroll_progress(true)
   else
     grid:set_scrollbar_progress(0)
   end
@@ -1303,6 +1417,8 @@ end
 DMFOptionsView._focus_header_control = function (self, control)
   if control == "toggle" and not self._options_header:has_toggle() then
     control = "filter"
+  elseif control == "pin" and not self._options_header:has_pin() then
+    control = nil
   end
 
   self:_set_selected_navigation_widget(nil)
@@ -1337,7 +1453,17 @@ DMFOptionsView._handle_header_navigation = function (self, input_service)
   end
 
   if input_service:get("navigate_left_continuous") then
-    self:_focus_category_from_header()
+    if control ~= "pin" and self._options_header:has_pin() then
+      self:_focus_header_control("pin")
+    else
+      self:_focus_category_from_header()
+    end
+  elseif control == "pin" then
+    if input_service:get("navigate_right_continuous") then
+      self:_focus_header_control(self._options_header:has_toggle() and "toggle" or "filter")
+    elseif input_service:get("navigate_down_continuous") then
+      self:_focus_first_setting_from_header()
+    end
   elseif control == "toggle" then
     if input_service:get("navigate_down_continuous") then
       self:_focus_header_control("filter")
@@ -1394,19 +1520,20 @@ DMFOptionsView._setup_category_config = function (self, config)
     if valid then
       local entry = {
         widget_type = "settings_button",
+        original_index = i,
         description = category_config.description,
         display_name = category_display_name,
         version = category_config.version,
         author = category_config.author,
         can_be_reset = category_config.can_be_reset,
+        is_favorited = category_config.is_favorited,
         is_togglable = category_config.is_togglable,
         mod_name = category_config.mod_name,
         search_id = category_config.mod_name,
         is_toggle_mods_category = category_config.is_toggle_mods_category,
         pressed_function = function (parent, widget, entry)
+          self._selected_category_widget = widget
           self._category_content_grid:select_widget(widget)
-
-          local widget_name = widget.name
 
           self:present_category_widgets(category_display_name, entry)
 
@@ -1425,6 +1552,8 @@ DMFOptionsView._setup_category_config = function (self, config)
       reset_functions_by_category[category_display_name] = category_reset_function
     end
   end
+
+  sort_pinned_categories(entries)
 
   -- Retrieve default category from settings
   local category_setting = dmf:get("options_menu_last_selected")
@@ -1447,6 +1576,7 @@ DMFOptionsView._setup_category_config = function (self, config)
       widget = widgets[i],
       alignment_widget = alignment_widgets[i],
     }
+    update_category_pin_display(category_data[i])
   end
 
   self._all_category_content_widgets = widgets
@@ -1461,7 +1591,7 @@ DMFOptionsView._setup_category_config = function (self, config)
   self._categories_by_display_name = categories_by_display_name
 end
 
-DMFOptionsView._present_category_filter = function (self, filter_text, category_position_widget)
+DMFOptionsView._present_category_filter = function (self, filter_text, category_position_widget, initial_scroll_progress)
   local grid_data = OptionsFilter.filter(self._category_data, filter_text, true)
   local widgets = {}
   local alignment_widgets = {}
@@ -1482,7 +1612,14 @@ DMFOptionsView._present_category_filter = function (self, filter_text, category_
   local grid_spacing = _view_settings.category_grid_spacing
   self._category_content_grid = self:_setup_grid(widgets, alignment_widgets, grid_scenegraph_id, grid_spacing, true)
 
-  self:_setup_content_grid_scrollbar(self._category_content_grid, scrollbar_widget_id, grid_scenegraph_id, grid_pivot_scenegraph_id, category_position_widget)
+  self:_setup_content_grid_scrollbar(
+    self._category_content_grid,
+    scrollbar_widget_id,
+    grid_scenegraph_id,
+    grid_pivot_scenegraph_id,
+    category_position_widget,
+    initial_scroll_progress
+  )
 
   self._navigation_widgets[CATEGORIES_GRID] = widgets
   self._navigation_grids[CATEGORIES_GRID] = self._category_content_grid

@@ -123,7 +123,9 @@ local ViewElementOptionsHeader = class("ViewElementOptionsHeader", "ViewElementB
 ViewElementOptionsHeader.init = function (self, parent, draw_layer, start_scale, context)
   ViewElementOptionsHeader.super.init(self, parent, draw_layer, start_scale, OptionsHeaderDefinitions.create(context.panel_x, context.panel_y))
 
+  self._on_pin_changed = context.on_pin_changed
   self._on_toggle_changed = context.on_toggle_changed
+  self._get_pin_value = context.get_pin_value
   self._get_toggle_value = context.get_toggle_value
   self._text_layout_dirty = true
 
@@ -141,8 +143,10 @@ ViewElementOptionsHeader.set_category = function (self, category_entry)
   local mod_name = category_entry.mod_name
 
   self._title_tooltip_mod_name = not category_entry.is_toggle_mods_category and mod_name or nil
+  self._has_pin = not category_entry.is_toggle_mods_category and mod_name ~= nil
   self._has_toggle = category_entry.is_togglable and not category_entry.is_toggle_mods_category or false
   local title_widget = self._widgets_by_name.title
+  local pin_widget = self._widgets_by_name.pin
   local metadata_widget = self._widgets_by_name.metadata
   local description_widget = self._widgets_by_name.description
   local toggle_widget = self._widgets_by_name.toggle
@@ -150,6 +154,8 @@ ViewElementOptionsHeader.set_category = function (self, category_entry)
   local has_metadata = self._metadata ~= ""
   local has_description = self._full_description ~= ""
   local left_y = 0
+
+  pin_widget.content.visible = self._has_pin
 
   self:_set_scenegraph_position(title_widget.scenegraph_id, nil, left_y)
 
@@ -208,6 +214,10 @@ ViewElementOptionsHeader.has_toggle = function (self)
   return self._has_toggle
 end
 
+ViewElementOptionsHeader.has_pin = function (self)
+  return self._has_pin
+end
+
 ViewElementOptionsHeader.is_filter_writing = function (self)
   return self._widgets_by_name.filter.content.is_writing and true or false
 end
@@ -219,12 +229,16 @@ end
 ViewElementOptionsHeader.set_focused_control = function (self, control)
   if control == "toggle" and not self._has_toggle then
     control = nil
+  elseif control == "pin" and not self._has_pin then
+    control = nil
   end
 
   self._focused_control = control
 
   local toggle_hotspot = self._widgets_by_name.toggle.content.hotspot
+  local pin_hotspot = self._widgets_by_name.pin.content.hotspot
 
+  pin_hotspot.is_focused = control == "pin"
   toggle_hotspot.is_focused = control == "toggle"
   FilterInput.set_focused(self._widgets_by_name.filter.content, control == "filter")
 end
@@ -237,14 +251,20 @@ ViewElementOptionsHeader._update_text_layout = function (self, ui_renderer)
   local title_widget = self._widgets_by_name.title
   local metadata_widget = self._widgets_by_name.metadata
   local description_widget = self._widgets_by_name.description
-  local title_width = self:_scenegraph_size(title_widget.scenegraph_id)
+  local title_max_width = OptionsHeaderDefinitions.text_width
+  local pin_widget = self._widgets_by_name.pin
+
+  if self._has_pin then
+    title_max_width = title_max_width - OptionsHeaderDefinitions.pin_size - OptionsHeaderDefinitions.pin_gap
+  end
+
   local metadata_width = self:_scenegraph_size(metadata_widget.scenegraph_id)
   local description_width = self:_scenegraph_size(description_widget.scenegraph_id)
   local title_style = title_widget.style.text
   local metadata_style = metadata_widget.style.text
   local description_style = description_widget.style.text
 
-  local title = truncate_text(ui_renderer, self._full_title, title_style, title_width)
+  local title = truncate_text(ui_renderer, self._full_title, title_style, title_max_width)
   local metadata = truncate_text(ui_renderer, self._metadata, metadata_style, metadata_width)
   local description, description_differs = truncate_text(ui_renderer, self._full_description, description_style, description_width)
 
@@ -256,7 +276,37 @@ ViewElementOptionsHeader._update_text_layout = function (self, ui_renderer)
   description_widget.content.differs_from_full_text = description_differs
   description_widget.content.full_text = self._full_description
   description_widget.content.hotspot.force_disabled = not description_differs
+
+  local title_width = math.min(math.ceil(line_width(ui_renderer, title, title_style)), title_max_width)
+
+  self:_set_scenegraph_size(title_widget.scenegraph_id, title_width, nil)
+
+  if self._has_pin then
+    local pin_x = math.min(
+      title_width + OptionsHeaderDefinitions.pin_gap,
+      OptionsHeaderDefinitions.text_width - OptionsHeaderDefinitions.pin_size
+    )
+
+    self:_set_scenegraph_position(pin_widget.scenegraph_id, pin_x, nil)
+  end
+
+  self:_force_update_scenegraph()
   self._text_layout_dirty = nil
+end
+
+ViewElementOptionsHeader._update_pin = function (self)
+  if not self._has_pin then
+    return
+  end
+
+  local content = self._widgets_by_name.pin.content
+  local value = self._get_pin_value(self._category_entry)
+
+  content.is_pinned = value
+
+  if content.hotspot.on_pressed then
+    self._on_pin_changed(self._category_entry, not value)
+  end
 end
 
 ViewElementOptionsHeader._update_toggle = function (self)
@@ -368,6 +418,7 @@ ViewElementOptionsHeader.update = function (self, dt, t, input_service)
 
   ViewElementOptionsHeader.super.update(self, dt, t, input_service)
 
+  self:_update_pin()
   self:_update_toggle()
   self:_update_filter(input_service)
   self:_update_tooltip()
