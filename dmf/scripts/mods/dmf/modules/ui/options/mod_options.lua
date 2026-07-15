@@ -197,6 +197,7 @@ local create_mod_toggle_template = function (self, params)
     display_name = params.readable_mod_name or params.mod_name,
     indentation_level = 0,
     require_restart = params.require_restart,
+    search_id = params.mod_name,
     tooltip_identifier = params.mod_name ~= "" and params.mod_name or nil,
     tooltip_metadata = tooltip_metadata ~= "" and tooltip_metadata or nil,
     tooltip_text = params.description ~= "" and params.description or nil,
@@ -400,9 +401,8 @@ local function widget_data_to_template(self, data)
   if data and data.type and type(data.type) == "string" and _type_template_map[data.type] then
     local template = _type_template_map[data.type](self, data)
 
-    if data.type ~= "group" then
-      template.setting_id = data.setting_id
-    end
+    template.search_id = template.search_id or data.setting_id
+    template.setting_id = data.setting_id
 
     if data.has_sub_widgets and (data.type == "checkbox" or data.type == "dropdown") then
       template.controls_sub_widgets = true

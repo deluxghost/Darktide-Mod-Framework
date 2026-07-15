@@ -5,6 +5,20 @@ local function searchable_text(text)
   return Utf8.lower(tostring(text or ""):gsub(COLOR_FORMAT_PATTERN, ""))
 end
 
+local function escape_pattern(text)
+  return text:gsub("([%(%)%.%%%+%-%*%?%[%]%^%$])", "%%%1")
+end
+
+local function search_pattern(filter_text)
+  local parts = {}
+
+  for term in string.gmatch(searchable_text(filter_text), "%S+") do
+    parts[#parts + 1] = escape_pattern(term)
+  end
+
+  return table.concat(parts, ".*")
+end
+
 local function is_focusable(data)
   local content = data.widget and data.widget.content
 
@@ -57,8 +71,12 @@ local function add_nearest_group_options(category_data, visible, included, group
   end
 end
 
-local function matches_filter(data, filter_text)
-  return string.find(data.search_text, filter_text, 1, true) ~= nil
+local function matches_filter(data, pattern, include_id)
+  if string.find(data.search_text, pattern) then
+    return true
+  end
+
+  return include_id and string.find(data.id_search_text, pattern) ~= nil
 end
 
 OptionsFilter.prepare = function (category_data)
@@ -80,14 +98,14 @@ OptionsFilter.prepare = function (category_data)
     end
 
     data.search_text = searchable_text(data.entry.display_name)
+    data.id_search_text = searchable_text(data.entry.search_id)
     data.parent_index = ancestor_stack[#ancestor_stack]
     ancestor_stack[#ancestor_stack + 1] = i
   end
 end
 
-OptionsFilter.filter = function (category_data, filter_text)
-  filter_text = Utf8.lower(filter_text or "")
-
+OptionsFilter.filter = function (category_data, filter_text, include_id)
+  local pattern = search_pattern(filter_text)
   local visible = {}
   local included = {}
 
@@ -95,7 +113,7 @@ OptionsFilter.filter = function (category_data, filter_text)
     visible[i] = not category_data[i].entry.hidden
   end
 
-  if filter_text == "" then
+  if pattern == "" then
     for i = 1, #category_data do
       included[i] = visible[i]
     end
@@ -104,7 +122,7 @@ OptionsFilter.filter = function (category_data, filter_text)
       local data = category_data[i]
       local entry = data.entry
 
-      if visible[i] and matches_filter(data, filter_text) then
+      if visible[i] and matches_filter(data, pattern, include_id) then
         included[i] = true
 
         if entry.widget_type == "group_header" then
