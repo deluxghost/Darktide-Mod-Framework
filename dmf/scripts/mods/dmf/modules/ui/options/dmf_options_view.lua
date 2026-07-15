@@ -1186,7 +1186,8 @@ DMFOptionsView.present_category_widgets = function (self, category, category_ent
   if category_data then
     dmf:set("options_menu_last_selected", category)
 
-    local grid_data = OptionsFilter.filter(category_data, self._options_header:filter_text())
+    local include_ids = category_entry.is_toggle_mods_category or dmf:get(SHOW_MOD_OPTION_IDS_SETTING)
+    local grid_data = OptionsFilter.filter(category_data, self._options_header:filter_text(), include_ids)
     local widgets = {}
     local alignment_widgets = {}
 
@@ -1400,6 +1401,7 @@ DMFOptionsView._setup_category_config = function (self, config)
         can_be_reset = category_config.can_be_reset,
         is_togglable = category_config.is_togglable,
         mod_name = category_config.mod_name,
+        search_id = category_config.mod_name,
         is_toggle_mods_category = category_config.is_toggle_mods_category,
         pressed_function = function (parent, widget, entry)
           self._category_content_grid:select_widget(widget)
@@ -1460,7 +1462,7 @@ DMFOptionsView._setup_category_config = function (self, config)
 end
 
 DMFOptionsView._present_category_filter = function (self, filter_text, category_position_widget)
-  local grid_data = OptionsFilter.filter(self._category_data, filter_text)
+  local grid_data = OptionsFilter.filter(self._category_data, filter_text, true)
   local widgets = {}
   local alignment_widgets = {}
 
