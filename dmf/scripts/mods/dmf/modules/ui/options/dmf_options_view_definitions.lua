@@ -2,7 +2,7 @@
 local dmf = get_mod("DMF")
 
 local _view_settings = dmf:io_dofile("dmf/scripts/mods/dmf/modules/ui/options/dmf_options_view_settings")
-local FilterInput = dmf:io_dofile("dmf/scripts/mods/dmf/modules/ui/options/header/filter_input")
+local FilterInput = dmf:io_dofile("dmf/scripts/mods/dmf/modules/ui/options/filter/filter_input")
 
 local ScrollbarPassTemplates = require("scripts/ui/pass_templates/scrollbar_pass_templates")
 local UIFontSettings = require("scripts/managers/ui/ui_font_settings")
@@ -25,7 +25,6 @@ local category_mask_size = {
   grid_width + grid_blur_edge_size[1] * 2,
   category_content_height + grid_blur_edge_size[2] * 2
 }
-local mask_offset_y = 16
 local settings_header_offset = _view_settings.settings_header_height + _view_settings.settings_header_spacing
 local settings_header_y = 130
 local settings_grid_y = settings_header_y + settings_header_offset

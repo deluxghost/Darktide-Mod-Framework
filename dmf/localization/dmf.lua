@@ -10,10 +10,6 @@ return {
     ["zh-cn"] = "模组选项",
     ja = "Modオプション",
   },
-  options_filter = {
-    en = "Filter",
-    ["zh-cn"] = "筛选",
-  },
   open_dmf_options = {
     en = "Open Options Menu",
     es = "Abrir el menu de configuración",

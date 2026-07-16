@@ -245,7 +245,9 @@ dmf:hook(CLASS.ConstantElementChat, "_handle_active_chat_input", function(func, 
   return result
 end)
 
-dmf:hook(CLASS.ConstantElementChat, "_draw_widgets", function(func, self, dt, t, input_service, ui_renderer, render_settings, ...)
+dmf:hook(CLASS.ConstantElementChat, "_draw_widgets", function(
+  func, self, dt, t, input_service, ui_renderer, render_settings, ...
+)
   local result = func(self, dt, t, input_service, ui_renderer, render_settings, ...)
 
   if _chat_opened and #_commands_list > 0 then

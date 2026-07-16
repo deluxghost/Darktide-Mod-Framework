@@ -90,7 +90,7 @@ end
 local function create_pointer_logic_pass()
   return {
     pass_type = "logic",
-    value = function (pass, renderer, style, content, position, size)
+    value = function (pass_, renderer, style_, content, position, size)
       local input_service = renderer.input_service
 
       if not input_service or input_service:is_null_service() then
@@ -124,7 +124,9 @@ local function create_pointer_logic_pass()
   }
 end
 
-local function append_indicator_outline_passes(passes, width, height, offset_x, offset_y, layer, x_content_id, y_content_id)
+local function append_indicator_outline_passes(
+  passes, width, height, offset_x, offset_y, layer, x_content_id, y_content_id
+)
   local function append_frame(prefix, inset, color, z)
     local frame_width = width - inset * 2
     local frame_height = height - inset * 2
@@ -534,7 +536,10 @@ local function create_definitions(has_alpha)
         size = { label_position[3], label_position[4] },
         position = { label_position[1], label_position[2], 3 },
       }
-      widget_definitions["label_" .. field_name] = create_label_definition(INPUT_LABELS[field_name], "label_" .. field_name)
+      widget_definitions["label_" .. field_name] = create_label_definition(
+        INPUT_LABELS[field_name],
+        "label_" .. field_name
+      )
     end
   end
 

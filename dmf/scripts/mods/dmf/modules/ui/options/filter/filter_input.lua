@@ -1,3 +1,7 @@
+local dmf = get_mod("DMF")
+
+local TextInputUtils = dmf:io_dofile("dmf/scripts/mods/dmf/modules/ui/options/text_input_utils")
+
 local TextInputPassTemplates = require("scripts/ui/pass_templates/text_input_pass_templates")
 
 local FilterInput = {}
@@ -10,15 +14,6 @@ local function has_input_text(content)
   content = content.parent or content
 
   return content.input_text and content.input_text ~= ""
-end
-
-local function clear_selection(content)
-  content.selected_text = nil
-  content._selection_start = nil
-  content._selection_end = nil
-  content._selection_changed = nil
-  content._is_selecting = nil
-  content.last_input = nil
 end
 
 FilterInput.create_passes = function ()
@@ -91,12 +86,12 @@ FilterInput.reset = function (content)
   content.hotspot.is_focused = false
   content.hotspot.is_selected = false
 
-  clear_selection(content)
+  TextInputUtils.clear_selection(content)
 end
 
 FilterInput.finish_editing = function (content)
   content.is_writing = false
-  clear_selection(content)
+  TextInputUtils.clear_selection(content)
 end
 
 FilterInput.clear = function (content)
@@ -128,7 +123,7 @@ FilterInput.update = function (content, input_service, focused)
       FilterInput.finish_editing(content)
     end
   else
-    clear_selection(content)
+    TextInputUtils.clear_selection(content)
   end
 
   hotspot.is_selected = focused or content.is_writing

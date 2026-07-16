@@ -1,3 +1,7 @@
+local dmf = get_mod("DMF")
+
+local TextInputUtils = dmf:io_dofile("dmf/scripts/mods/dmf/modules/ui/options/text_input_utils")
+
 local TextInputPassTemplates = require("scripts/ui/pass_templates/text_input_pass_templates")
 local UIRenderer = require("scripts/managers/ui/ui_renderer")
 
@@ -5,8 +9,6 @@ local NumericInput = {}
 
 local INPUT_HORIZONTAL_PADDING = 10
 local MIN_INPUT_WIDTH = 64
-local VALID_TEXT_CHANNEL = 255
-local INVALID_TEXT_CHANNEL = 70
 local ALIGNMENT_PASS_INDEX = 5
 
 local function number_format(num_decimals)
@@ -43,7 +45,7 @@ end
 local function create_alignment_pass(input_x, input_width)
   return {
     pass_type = "logic",
-    value = function (_pass, ui_renderer, ui_style, content)
+    value = function (pass_, ui_renderer, ui_style, content)
       local display_style = ui_style.parent.display_text
       local input_text = content.input_text or ""
       local text_width = UIRenderer.text_size(ui_renderer, input_text, display_style.font_type, display_style.font_size)
@@ -138,15 +140,6 @@ NumericInput.add_passes = function (parent, entry, passes, input_height)
   return passes
 end
 
-local function clear_selection(content)
-  content.selected_text = nil
-  content._selection_start = nil
-  content._selection_end = nil
-  content._selection_changed = nil
-  content._is_selecting = nil
-  content.last_input = nil
-end
-
 local function set_input_text(content, text)
   content.input_text = text
   content.display_text = text
@@ -183,14 +176,6 @@ local function parse_input(entry, text, max_length)
   return value
 end
 
-local function update_validation_style(style, is_valid)
-  local text_color = style.display_text.text_color
-
-  text_color[2] = VALID_TEXT_CHANNEL
-  text_color[3] = is_valid and VALID_TEXT_CHANNEL or INVALID_TEXT_CHANNEL
-  text_color[4] = is_valid and VALID_TEXT_CHANNEL or INVALID_TEXT_CHANNEL
-end
-
 local function sync_input(content, entry)
   local value = entry.get_function(entry) or entry.default_value
   local text = format_value(entry, value)
@@ -214,9 +199,9 @@ local function finish_editing(widget, entry)
     entry.changed_callback(value)
   end
 
-  clear_selection(content)
+  TextInputUtils.clear_selection(content)
   sync_input(content, entry)
-  update_validation_style(widget.style, true)
+  TextInputUtils.update_validation_style(widget.style, true)
 end
 
 NumericInput.init = function (widget, entry)
@@ -245,9 +230,9 @@ NumericInput.update = function (parent, widget, entry, input_service, using_game
     return true
   elseif not is_writing then
     input_hotspot.is_selected = false
-    clear_selection(content)
+    TextInputUtils.clear_selection(content)
     sync_input(content, entry)
-    update_validation_style(widget.style, true)
+    TextInputUtils.update_validation_style(widget.style, true)
 
     return false
   end
@@ -262,7 +247,7 @@ NumericInput.update = function (parent, widget, entry, input_service, using_game
   local confirmed = input_service and input_service:get("confirm_pressed")
   local cancelled = input_service and input_service:get("back")
 
-  update_validation_style(widget.style, input_valid)
+  TextInputUtils.update_validation_style(widget.style, input_valid)
 
   if clicked_away or confirmed or cancelled or using_gamepad or is_disabled then
     finish_editing(widget, entry)

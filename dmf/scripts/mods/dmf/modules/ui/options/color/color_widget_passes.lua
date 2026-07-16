@@ -31,8 +31,13 @@ local function stop_drag(content)
   content.previous_cursor_x = nil
 end
 
+local function preview_is_highlighted(content)
+  return content.preview_hotspot.is_hover
+    or content.exclusive_focus and content.gamepad_selected_control == "preview"
+end
+
 local function create_drag_logic(channels, has_alpha)
-  return function (pass, renderer, style, content)
+  return function (pass_, renderer, style_, content)
     local input_service = renderer.input_service
 
     if not input_service then
@@ -189,7 +194,7 @@ local function create_preview_passes(preview_x)
       size = { PREVIEW_SIZE, PREVIEW_SIZE },
     },
     visibility_function = function (content)
-      return not content.disabled and (content.preview_hotspot.is_hover or content.exclusive_focus and content.gamepad_selected_control == "preview")
+      return not content.disabled and preview_is_highlighted(content)
     end,
   }
   passes[#passes + 1] = {
@@ -198,7 +203,7 @@ local function create_preview_passes(preview_x)
     value = "\u{e029}",
     style = edit_text_style,
     visibility_function = function (content)
-      return not content.disabled and (content.preview_hotspot.is_hover or content.exclusive_focus and content.gamepad_selected_control == "preview")
+      return not content.disabled and preview_is_highlighted(content)
     end,
   }
   passes[#passes + 1] = {
@@ -272,7 +277,9 @@ local function create_channel_passes(channel, channel_order, channel_count, cont
         style.size[1] = track_width * content.preview_color[channel_index] / 255
 
         local hotspot = content[hotspot_id]
-        local highlighted = content.active_color_channel == channel_index or content.gamepad_active_channel == channel_index or hotspot.is_hover
+        local highlighted = content.active_color_channel == channel_index
+          or content.gamepad_active_channel == channel_index
+          or hotspot.is_hover
         local target_color = highlighted and TRACK_HOVER_COLOR or TRACK_COLOR
 
         for i = 1, 4 do

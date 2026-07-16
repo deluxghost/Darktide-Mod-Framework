@@ -3,10 +3,9 @@ local dmf = get_mod("DMF")
 local ColorPickerDefinitions = dmf:io_dofile("dmf/scripts/mods/dmf/modules/ui/options/color/color_picker_definitions")
 local ColorPickerGamepad = dmf:io_dofile("dmf/scripts/mods/dmf/modules/ui/options/color/color_picker_gamepad")
 local ColorUtils = dmf:io_dofile("dmf/scripts/mods/dmf/modules/ui/options/color/color_utils")
+local TextInputUtils = dmf:io_dofile("dmf/scripts/mods/dmf/modules/ui/options/text_input_utils")
 
 local PICKER_SIZE = ColorPickerDefinitions.picker_size
-local VALID_TEXT_CHANNEL = 255
-local INVALID_TEXT_CHANNEL = 70
 local clamp_integer = ColorUtils.clamp_integer
 local colors_equal = ColorUtils.equal
 local copy_color = ColorUtils.copy
@@ -37,7 +36,8 @@ ViewElementColorPicker.init = function (self, parent, draw_layer, start_scale, c
 
   ColorPickerGamepad.init(self, gamepad_navigation_items)
 
-  self._widgets_by_name.title.content.text = context.entry.display_name or Managers.localization:localize("loc_settings_option_unavailable")
+  self._widgets_by_name.title.content.text = context.entry.display_name
+    or Managers.localization:localize("loc_settings_option_unavailable")
   self._widgets_by_name.back_button.content.text = Localize("loc_view_back")
 
   for i = 1, #field_names do
@@ -206,14 +206,6 @@ local function is_field_input_valid(field_name, input)
   return false
 end
 
-local function update_field_validation_style(widget, is_valid)
-  local text_color = widget.style.display_text.text_color
-
-  text_color[2] = VALID_TEXT_CHANNEL
-  text_color[3] = is_valid and VALID_TEXT_CHANNEL or INVALID_TEXT_CHANNEL
-  text_color[4] = is_valid and VALID_TEXT_CHANNEL or INVALID_TEXT_CHANNEL
-end
-
 ViewElementColorPicker._commit_field = function (self, field_name)
   local input = self._widgets_by_name["input_" .. field_name].content.input_text or ""
   local color = self._draft_color
@@ -287,22 +279,13 @@ ViewElementColorPicker._commit_writing_fields = function (self)
   end
 end
 
-local function clear_selection(content)
-  content.selected_text = nil
-  content._selection_start = nil
-  content._selection_end = nil
-  content._selection_changed = nil
-  content._is_selecting = nil
-  content.last_input = nil
-end
-
 ViewElementColorPicker._stop_field_writing = function (self, field_name)
   local content = self._widgets_by_name["input_" .. field_name].content
 
   content.is_writing = false
   self:_commit_field(field_name)
 
-  clear_selection(content)
+  TextInputUtils.clear_selection(content)
   content.hotspot.is_focused = false
   content.hotspot.is_selected = false
   self._field_writing[field_name] = false
@@ -337,12 +320,12 @@ ViewElementColorPicker._update_field_writing_state = function (self)
     elseif was_writing and not content.is_writing then
       self:_stop_field_writing(field_name)
     elseif not content.is_writing then
-      clear_selection(content)
+      TextInputUtils.clear_selection(content)
     end
 
     local is_valid = not content.is_writing or is_field_input_valid(field_name, content.input_text or "")
 
-    update_field_validation_style(widget, is_valid)
+    TextInputUtils.update_validation_style(widget.style, is_valid)
   end
 end
 
