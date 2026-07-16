@@ -1,3 +1,7 @@
+local dmf = get_mod("DMF")
+
+local TextInputUtils = dmf:io_dofile("dmf/scripts/mods/dmf/modules/ui/options/text_input_utils")
+
 local ListHeaderPassTemplates = require("scripts/ui/pass_templates/list_header_templates")
 local TextInputPassTemplates = require("scripts/ui/pass_templates/text_input_pass_templates")
 
@@ -7,8 +11,6 @@ local ENABLED_ALPHA = 255
 local DISABLED_ALPHA = 128
 local PLACEHOLDER_ENABLED_ALPHA = 200
 local PLACEHOLDER_DISABLED_ALPHA = 100
-local VALID_TEXT_CHANNEL = 255
-local INVALID_TEXT_CHANNEL = 70
 
 local function create_passes(size, value_width, value_height)
   local x_offset = size[1] - value_width
@@ -67,7 +69,7 @@ local function create_passes(size, value_width, value_height)
 
   passes[#passes + 1] = {
     pass_type = "logic",
-    value = function (_pass, _renderer, _style, content)
+    value = function (pass_, renderer_, style_, content)
       local hotspot = content.hotspot
       local input_hotspot = content.input_hotspot
 
@@ -79,15 +81,6 @@ local function create_passes(size, value_width, value_height)
   table.append(passes, input_passes)
 
   return passes
-end
-
-local function clear_selection(content)
-  content.selected_text = nil
-  content._selection_start = nil
-  content._selection_end = nil
-  content._selection_changed = nil
-  content._is_selecting = nil
-  content.last_input = nil
 end
 
 local function is_text_valid(content, value)
@@ -136,21 +129,13 @@ local function update_disabled_style(style, is_disabled)
   style.active_placeholder.text_color[1] = is_disabled and PLACEHOLDER_DISABLED_ALPHA or PLACEHOLDER_ENABLED_ALPHA
 end
 
-local function update_validation_style(style, is_valid)
-  local text_color = style.display_text.text_color
-
-  text_color[2] = VALID_TEXT_CHANNEL
-  text_color[3] = is_valid and VALID_TEXT_CHANNEL or INVALID_TEXT_CHANNEL
-  text_color[4] = is_valid and VALID_TEXT_CHANNEL or INVALID_TEXT_CHANNEL
-end
-
-function TextWidget.create_blueprint(grid_width, value_width, value_height)
+TextWidget.create_blueprint = function (grid_width, value_width, value_height)
   return {
     size = { grid_width, value_height },
-    pass_template_function = function (_parent, _config, size)
+    pass_template_function = function (parent_, config_, size)
       return create_passes(size, value_width, value_height)
     end,
-    init = function (parent, widget, entry, _callback_name, changed_callback_name)
+    init = function (parent, widget, entry, callback_name_, changed_callback_name)
       local content = widget.content
       local current_value = entry.get_function()
 
@@ -206,7 +191,7 @@ function TextWidget.create_blueprint(grid_width, value_width, value_height)
           content.setting_value = current_value
         end
 
-        clear_selection(content)
+        TextInputUtils.clear_selection(content)
       end
 
       if not is_disabled and (hotspot.is_focused or content.is_writing) then
@@ -217,7 +202,10 @@ function TextWidget.create_blueprint(grid_width, value_width, value_height)
         parent._selected_settings_widget = widget
       end
 
-      update_validation_style(widget.style, not content.is_writing or is_text_valid(content, content.input_text))
+      TextInputUtils.update_validation_style(
+        widget.style,
+        not content.is_writing or is_text_valid(content, content.input_text)
+      )
     end,
   }
 end

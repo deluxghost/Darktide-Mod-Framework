@@ -1,6 +1,8 @@
 local dmf = get_mod("DMF")
 
-local OptionsTabIndicatorDefinitions = dmf:io_dofile("dmf/scripts/mods/dmf/modules/ui/options/tab_indicator/options_tab_indicator_definitions")
+local OptionsTabIndicatorDefinitions = dmf:io_dofile(
+  "dmf/scripts/mods/dmf/modules/ui/options/tab_indicator/options_tab_indicator_definitions"
+)
 
 local InputUtils = require("scripts/managers/input/input_utils")
 local UIFonts = require("scripts/managers/ui/ui_fonts")
@@ -41,8 +43,9 @@ ViewElementOptionsTabIndicator.init = function (self, parent, draw_layer, start_
   local tabs = context.tabs
   local panel_width = context.available_width - PANEL_HORIZONTAL_PADDING
   local panel_x = context.available_x + PANEL_HORIZONTAL_PADDING * 0.5
+  local definitions = OptionsTabIndicatorDefinitions.create(#tabs, panel_width, panel_x)
 
-  ViewElementOptionsTabIndicator.super.init(self, parent, draw_layer, start_scale, OptionsTabIndicatorDefinitions.create(#tabs, panel_width, panel_x))
+  ViewElementOptionsTabIndicator.super.init(self, parent, draw_layer, start_scale, definitions)
 
   self._tabs = tabs
   self._panel_width = panel_width
@@ -230,7 +233,11 @@ ViewElementOptionsTabIndicator._update_scroll = function (self, dt, input_servic
     if scroll ~= 0 then
       local direction = scroll > 0 and -1 or 1
 
-      self._target_scroll_offset = math.clamp(self._target_scroll_offset + direction * SCROLL_DISTANCE, 0, self._max_scroll_offset)
+      self._target_scroll_offset = math.clamp(
+        self._target_scroll_offset + direction * SCROLL_DISTANCE,
+        0,
+        self._max_scroll_offset
+      )
     end
   end
 
@@ -308,7 +315,14 @@ ViewElementOptionsTabIndicator._update_tooltip_layout = function (self, ui_rende
   local tooltip = self._widgets_by_name.tooltip
   local text_style = tooltip.style.text
   local font_options = UIFonts.get_font_options_by_style(text_style)
-  local text_width, text_height = UIRenderer.text_size(ui_renderer, tooltip.content.text, text_style.font_type, text_style.font_size, { TOOLTIP_MAX_WIDTH, 0 }, font_options)
+  local text_width, text_height = UIRenderer.text_size(
+    ui_renderer,
+    tooltip.content.text,
+    text_style.font_type,
+    text_style.font_size,
+    { TOOLTIP_MAX_WIDTH, 0 },
+    font_options
+  )
   local width = math.ceil(text_width) + TOOLTIP_HORIZONTAL_PADDING
   local height = math.ceil(text_height) + TOOLTIP_VERTICAL_PADDING
 

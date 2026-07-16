@@ -98,7 +98,7 @@ ColorWidget.create_blueprint = function (settings_grid_width, settings_value_wid
       settings_grid_width,
       settings_value_height,
     },
-    pass_template_function = function (parent, entry, size)
+    pass_template_function = function (parent_, entry, size)
       return ColorWidgetPasses.create(size[1], size[2], settings_value_width, entry.has_alpha)
     end,
     init = function (parent, widget, entry, callback_name, changed_callback_name)

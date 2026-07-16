@@ -1,8 +1,10 @@
 local dmf = get_mod("DMF")
 
-local OptionsHeaderDefinitions = dmf:io_dofile("dmf/scripts/mods/dmf/modules/ui/options/header/options_header_definitions")
+local OptionsHeaderDefinitions = dmf:io_dofile(
+  "dmf/scripts/mods/dmf/modules/ui/options/header/options_header_definitions"
+)
 local OptionsDisplayUtils = dmf:io_dofile("dmf/scripts/mods/dmf/modules/ui/options/options_display_utils")
-local FilterInput = dmf:io_dofile("dmf/scripts/mods/dmf/modules/ui/options/header/filter_input")
+local FilterInput = dmf:io_dofile("dmf/scripts/mods/dmf/modules/ui/options/filter/filter_input")
 
 local Text = require("scripts/utilities/ui/text")
 
@@ -121,7 +123,9 @@ end
 local ViewElementOptionsHeader = class("ViewElementOptionsHeader", "ViewElementBase")
 
 ViewElementOptionsHeader.init = function (self, parent, draw_layer, start_scale, context)
-  ViewElementOptionsHeader.super.init(self, parent, draw_layer, start_scale, OptionsHeaderDefinitions.create(context.panel_x, context.panel_y))
+  local definitions = OptionsHeaderDefinitions.create(context.panel_x, context.panel_y)
+
+  ViewElementOptionsHeader.super.init(self, parent, draw_layer, start_scale, definitions)
 
   self._on_pin_changed = context.on_pin_changed
   self._on_toggle_changed = context.on_toggle_changed
@@ -266,7 +270,9 @@ ViewElementOptionsHeader._update_text_layout = function (self, ui_renderer)
 
   local title = truncate_text(ui_renderer, self._full_title, title_style, title_max_width)
   local metadata = truncate_text(ui_renderer, self._metadata, metadata_style, metadata_width)
-  local description, description_differs = truncate_text(ui_renderer, self._full_description, description_style, description_width)
+  local description, description_differs = truncate_text(
+    ui_renderer, self._full_description, description_style, description_width
+  )
 
   title_widget.content.text = title
   title_widget.content.full_text = self._full_title
@@ -383,7 +389,10 @@ ViewElementOptionsHeader._update_tooltip_layout = function (self, ui_renderer)
     }, true)
   end
 
-  local content_width = math.min(math.ceil(math.max(text_width, mod_name_width)) + TOOLTIP_TEXT_MARGIN, TOOLTIP_MAX_WIDTH)
+  local content_width = math.min(
+    math.ceil(math.max(text_width, mod_name_width)) + TOOLTIP_TEXT_MARGIN,
+    TOOLTIP_MAX_WIDTH
+  )
   local _, text_height = Text.text_size(ui_renderer, tooltip.content.text, text_style, {
     content_width,
     TEXT_MEASUREMENT_BOUND,
