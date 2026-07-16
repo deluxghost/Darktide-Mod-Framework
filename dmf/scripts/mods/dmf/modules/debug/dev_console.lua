@@ -22,6 +22,29 @@ local _log_to_developer_console
 -- ##### Local functions ##############################################################################################
 -- ####################################################################################################################
 
+local function bind_dev_console_output()
+  if not _ffi then
+    return
+  end
+
+  _ffi.cdef([[
+    void* CreateFileA(const char* lpFileName, uint32_t dwDesiredAccess, uint32_t dwShareMode, void* lpSecurityAttributes, uint32_t dwCreationDisposition, uint32_t dwFlagsAndAttributes, void* hTemplateFile);
+    int SetStdHandle(uint32_t nStdHandle, void* hHandle);
+  ]])
+
+  local output_handle = _ffi.C.CreateFileA("CONOUT$", 0xC0000000, 0x3, nil, 0x3, 0, nil)
+  local invalid_handle = _ffi.cast("void *", -1)
+
+  if output_handle == nil or output_handle == invalid_handle then
+    dmf:error("(developer console) could not open CONOUT$")
+    return
+  end
+
+  if _ffi.C.SetStdHandle(0xfffffff5, output_handle) == 0 then
+    dmf:error("(developer console) could not bind stdout to CONOUT$")
+  end
+end
+
 local function log_and_console_print(...)
   CommandWindow.print(...)
   _console_data.original_print(...)
@@ -31,6 +54,7 @@ local function open_dev_console()
 
   if not _console_data.enabled then
     CommandWindow.open("Developer console")
+    bind_dev_console_output()
     _console_data.enabled = true
   end
 
