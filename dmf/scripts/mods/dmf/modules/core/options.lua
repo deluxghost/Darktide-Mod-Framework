@@ -466,7 +466,7 @@ end
 -- ---------------------------------------------------------------------------------------------------------------------
 
 local function validate_numeric_data(data)
-  if data.unit_text and type(data.unit_text) ~= "string" then
+  if data.unit_text ~= nil and type(data.unit_text) ~= "string" then
     dmf.throw_error("[widget \"%s\" (numeric)]: 'unit_text' field must have 'string' type", data.setting_id)
   end
 
