@@ -380,7 +380,7 @@ blueprints.value_slider = {
     local display_value = format_value_function(drag_value or value)
 
     if display_value then
-      content.value_text = display_value
+      content.value_text = entry.unit_text and string.format("%s %s", display_value, entry.unit_text) or display_value
       NumericInput.sync(widget, display_value)
     end
 
