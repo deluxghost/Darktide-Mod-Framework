@@ -381,6 +381,7 @@ blueprints.value_slider = {
 
     if display_value then
       content.value_text = display_value
+      NumericInput.sync(widget, display_value)
     end
 
     local hotspot = content.hotspot
@@ -584,13 +585,26 @@ blueprints.dropdown = {
     content.number_format = number_format
     content.options_by_value = options_by_value
     content.options = options
-    content.default_icon_styles = {
-      value = table.clone(widget.style.icon),
-      options = {},
-    }
+    local has_custom_icon_styles = false
 
-    for i = 1, num_visible_options do
-      content.default_icon_styles.options[i] = table.clone(widget.style["option_icon_" .. i])
+    for i = 1, num_options do
+      if options[i].icon_style then
+        has_custom_icon_styles = true
+
+        break
+      end
+    end
+
+    if has_custom_icon_styles then
+      content.default_icon_styles = {
+        value = table.clone(widget.style.icon),
+        options = {},
+      }
+      content.applied_option_icon_styles = {}
+
+      for i = 1, num_visible_options do
+        content.default_icon_styles.options[i] = table.clone(widget.style["option_icon_" .. i])
+      end
     end
 
     content.hotspot.pressed_callback = function ()
@@ -675,7 +689,12 @@ blueprints.dropdown = {
     content.value_text = preview_value
     content.value_icon = preview_icon
     style.text.offset = has_preview_icon and style.text.icon_offset or style.text.default_offset
-    apply_dropdown_icon_style(style.icon, content.default_icon_styles.value, preview_icon_style)
+
+    if content.default_icon_styles and content.applied_preview_icon_style ~= preview_icon_style then
+      apply_dropdown_icon_style(style.icon, content.default_icon_styles.value, preview_icon_style)
+      content.applied_preview_icon_style = preview_icon_style
+    end
+
     style.icon.visible = has_preview_icon
 
     local widget_type = widget.type
@@ -784,11 +803,17 @@ blueprints.dropdown = {
       local options_y = size[2] * option_index
       style[option_hotspot_id].offset[2] = grow_downwards and options_y or -options_y
       style[option_text_id].offset[2] = grow_downwards and options_y or -options_y
-      apply_dropdown_icon_style(
-        style[option_icon_id],
-        content.default_icon_styles.options[option_index],
-        option_icon_style
-      )
+
+      if content.default_icon_styles
+        and content.applied_option_icon_styles[option_index] ~= option_icon_style then
+        apply_dropdown_icon_style(
+          style[option_icon_id],
+          content.default_icon_styles.options[option_index],
+          option_icon_style
+        )
+        content.applied_option_icon_styles[option_index] = option_icon_style
+      end
+
       style[option_icon_id].offset[2] = (grow_downwards and options_y or -options_y)
         + (option_icon_style and option_icon_style.offset and option_icon_style.offset[2] or 0)
       style[option_text_id].offset[1] = has_option_icon

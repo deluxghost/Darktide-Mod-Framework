@@ -8,6 +8,12 @@ local copy_color = ColorUtils.copy
 
 local ColorWidget = {}
 local GAMEPAD_CHANNEL_SPEED = 150
+local COLOR_VALUE_IDS = {
+  "color_value_1",
+  "color_value_2",
+  "color_value_3",
+  "color_value_4",
+}
 
 local function first_channel_index(has_alpha)
   return has_alpha and 1 or 2
@@ -16,6 +22,20 @@ end
 local function stop_gamepad_channel_edit(content)
   content.gamepad_active_channel = nil
   content.gamepad_channel_value = nil
+end
+
+local function refresh_color_value_text(content)
+  local first_channel = first_channel_index(content.entry.has_alpha)
+
+  for i = first_channel, 4 do
+    content[COLOR_VALUE_IDS[i]] = string.format("%.0f", content.preview_color[i])
+  end
+
+  content.color_value_text_dirty = false
+end
+
+local function current_color(entry)
+  return dmf._get_setting_value(entry.mod_name, entry.setting_id) or entry.default_value
 end
 
 local function update_gamepad_channel(content, input_service, dt)
@@ -103,11 +123,12 @@ ColorWidget.create_blueprint = function (settings_grid_width, settings_value_wid
     end,
     init = function (parent, widget, entry, callback_name, changed_callback_name)
       local content = widget.content
-      local color = entry.get_function() or entry.default_value
+      local color = current_color(entry)
 
       content.text = entry.display_name or Managers.localization:localize("loc_settings_option_unavailable")
       content.entry = entry
       content.preview_color = copy_color(color)
+      content.color_value_text_dirty = true
       content.preview_hotspot.use_is_focused = true
       content.hotspot.pressed_callback = function ()
         if not entry.disabled and not Managers.ui:using_cursor_navigation() then
@@ -123,6 +144,7 @@ ColorWidget.create_blueprint = function (settings_grid_width, settings_value_wid
         content.gamepad_selected_control = nil
       end
       content.on_color_changed = function ()
+        content.color_value_text_dirty = true
         entry.on_activated(copy_color(content.preview_color), entry)
         entry.changed_callback()
       end
@@ -130,6 +152,8 @@ ColorWidget.create_blueprint = function (settings_grid_width, settings_value_wid
       entry.changed_callback = function ()
         callback(parent, changed_callback_name, widget, entry)()
       end
+
+      refresh_color_value_text(content)
     end,
     update = function (parent, widget, input_service, dt)
       local content = widget.content
@@ -150,10 +174,11 @@ ColorWidget.create_blueprint = function (settings_grid_width, settings_value_wid
       if content.preview_hotspot.on_pressed and not is_disabled and not using_gamepad then
         parent:show_color_picker(entry)
       elseif not drag_active and not content.gamepad_active_channel then
-        local current_color = entry.get_function() or entry.default_value
+        local setting_color = current_color(entry)
 
-        if not colors_equal(content.preview_color, current_color) then
-          content.preview_color = copy_color(current_color)
+        if not colors_equal(content.preview_color, setting_color) then
+          content.preview_color = copy_color(setting_color)
+          content.color_value_text_dirty = true
         end
       end
 
@@ -169,8 +194,8 @@ ColorWidget.create_blueprint = function (settings_grid_width, settings_value_wid
 
       content.drag_previously_active = drag_active
 
-      for i = 1, 4 do
-        content["color_value_" .. i] = string.format("%.0f", content.preview_color[i])
+      if content.color_value_text_dirty then
+        refresh_color_value_text(content)
       end
 
       return true

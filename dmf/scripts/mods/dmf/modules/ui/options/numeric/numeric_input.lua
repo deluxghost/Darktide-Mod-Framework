@@ -15,13 +15,14 @@ local function number_format(num_decimals)
   return string.format("%%.%df", num_decimals)
 end
 
-local function format_value(entry, value)
-  return string.format(number_format(entry.num_decimals), value)
+local function format_value(format, value)
+  return string.format(format, value)
 end
 
 local function max_input_length(entry)
-  local min_text = format_value(entry, entry.min_value)
-  local max_text = format_value(entry, entry.max_value)
+  local format = number_format(entry.num_decimals)
+  local min_text = format_value(format, entry.min_value)
+  local max_text = format_value(format, entry.max_value)
 
   return math.max(#min_text, #max_text)
 end
@@ -48,9 +49,15 @@ local function create_alignment_pass(input_x, input_width)
     value = function (pass_, ui_renderer, ui_style, content)
       local display_style = ui_style.parent.display_text
       local input_text = content.input_text or ""
+
+      if content.numeric_aligned_text == input_text then
+        return
+      end
+
       local text_width = UIRenderer.text_size(ui_renderer, input_text, display_style.font_type, display_style.font_size)
 
       display_style.offset[1] = input_x + input_width - INPUT_HORIZONTAL_PADDING - text_width
+      content.numeric_aligned_text = input_text
     end,
   }
 end
@@ -143,6 +150,7 @@ end
 local function set_input_text(content, text)
   content.input_text = text
   content.display_text = text
+  content.numeric_aligned_text = nil
   content._input_text = nil
   content.caret_position = Utf8.string_length(text) + 1
   content._caret_position = nil
@@ -176,13 +184,16 @@ local function parse_input(entry, text, max_length)
   return value
 end
 
-local function sync_input(content, entry)
-  local value = entry.get_function(entry) or entry.default_value
-  local text = format_value(entry, value)
-
+local function sync_input(content, text)
   if content.input_text ~= text then
     set_input_text(content, text)
   end
+end
+
+local function sync_current_value(content, entry)
+  local value = entry.get_function(entry) or entry.default_value
+
+  sync_input(content, format_value(content.numeric_number_format, value))
 end
 
 local function finish_editing(widget, entry)
@@ -200,20 +211,26 @@ local function finish_editing(widget, entry)
   end
 
   TextInputUtils.clear_selection(content)
-  sync_input(content, entry)
+  sync_current_value(content, entry)
   TextInputUtils.update_validation_style(widget.style, true)
 end
 
 NumericInput.init = function (widget, entry)
   local content = widget.content
+  local format = number_format(entry.num_decimals)
 
+  content.numeric_number_format = format
   content.max_length = max_input_length(entry)
   content.show_length_limit = false
   content.close_on_backspace = false
   content.numeric_input_was_writing = false
   content.input_hotspot.use_is_focused = false
 
-  sync_input(content, entry)
+  sync_current_value(content, entry)
+end
+
+NumericInput.sync = function (widget, text)
+  sync_input(widget.content, text)
 end
 
 NumericInput.update = function (parent, widget, entry, input_service, using_gamepad, is_disabled)
@@ -231,7 +248,6 @@ NumericInput.update = function (parent, widget, entry, input_service, using_game
   elseif not is_writing then
     input_hotspot.is_selected = false
     TextInputUtils.clear_selection(content)
-    sync_input(content, entry)
     TextInputUtils.update_validation_style(widget.style, true)
 
     return false

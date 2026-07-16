@@ -84,6 +84,7 @@ _type_template_map["percent_slider"] = create_percent_slider_template
 
 -- Create value slider template
 local create_value_slider_template = function (self, params)
+  local number_format = string.format("%%.%sf", params.decimals_number)
 
   params.on_value_changed_function = function(new_value)
     get_mod(params.mod_name):set(params.setting_id, new_value, true)
@@ -102,6 +103,9 @@ local create_value_slider_template = function (self, params)
   params.num_decimals = params.decimals_number
   params.step_size_value = math.pow(10, params.decimals_number * -1)
   params.type = "value_slider"
+  params.format_value_function = params.format_value_function or function (value)
+    return string.format(number_format, value)
+  end
 
   local template = OptionsUtilities.create_value_slider_template(params)
 

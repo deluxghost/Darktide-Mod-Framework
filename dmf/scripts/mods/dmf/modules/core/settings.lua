@@ -91,6 +91,12 @@ end
 -- ##### DMF internal functions and variables ##########################################################################
 -- #####################################################################################################################
 
+function dmf._get_setting_value(mod_name, setting_id)
+  local mod_settings = _mods_settings[mod_name]
+
+  return mod_settings and mod_settings[setting_id]
+end
+
 function dmf.save_unsaved_settings_to_file()
   save_all_settings()
 end
