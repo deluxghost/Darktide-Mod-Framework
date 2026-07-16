@@ -1095,7 +1095,6 @@ DMFOptionsView._refresh_dynamic_options = function (self, changed_entry)
   self._close_selected_setting = nil
   clear_tooltip(self)
   self:_set_exclusive_focus_on_grid_widget(nil)
-  self:_setup_settings_config(self._options_templates)
   self:present_category_widgets(category, category_entry, tab_scroll_offset, {
     preserve_header = true,
     restore_saved_scroll = false,
@@ -1323,12 +1322,13 @@ DMFOptionsView.update_color_widget_preview = function (self, entry, color)
     local content = widgets[i].content
 
     if content.entry == entry then
-      content.preview_color = {
-        color[1],
-        color[2],
-        color[3],
-        color[4],
-      }
+      local preview_color = content.preview_color
+
+      for channel = 1, 4 do
+        preview_color[channel] = color[channel]
+      end
+
+      content.color_value_text_dirty = true
 
       return
     end

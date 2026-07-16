@@ -59,6 +59,30 @@ ViewElementOptionsTabIndicator.init = function (self, parent, draw_layer, start_
   self._max_scroll_offset = math.max(self._content_width - panel_width, 0)
   self._scroll_offset = math.clamp(context.initial_scroll_offset or 0, 0, self._max_scroll_offset)
   self._target_scroll_offset = self._scroll_offset
+  self._tab_widgets = {}
+  self._focus_grid_indices = {}
+  self._focus_tab_indices = {}
+  self._scroll_tab_offsets = {}
+  self._scroll_tab_indices = {}
+
+  local previous_scroll_offset
+
+  for i = 1, #tabs do
+    local tab = tabs[i]
+
+    self._tab_widgets[i] = self._widgets_by_name["tab_" .. i]
+
+    if tab.focus_grid_index then
+      self._focus_grid_indices[#self._focus_grid_indices + 1] = tab.focus_grid_index
+      self._focus_tab_indices[#self._focus_tab_indices + 1] = i
+    end
+
+    if tab.scroll_offset ~= previous_scroll_offset then
+      self._scroll_tab_offsets[#self._scroll_tab_offsets + 1] = tab.scroll_offset
+      self._scroll_tab_indices[#self._scroll_tab_indices + 1] = i
+      previous_scroll_offset = tab.scroll_offset
+    end
+  end
 
   self:_refresh_tabs()
 end
@@ -104,36 +128,44 @@ ViewElementOptionsTabIndicator._tab_index_at_grid_index = function (self, grid_i
     return
   end
 
-  local tab_index = 1
+  local indices = self._focus_grid_indices
+  local low = 1
+  local high = #indices
+  local match = 0
 
-  for i = 1, #self._tabs do
-    local focus_grid_index = self._tabs[i].focus_grid_index
+  while low <= high do
+    local middle = math.floor((low + high) * 0.5)
 
-    if focus_grid_index and focus_grid_index <= grid_index then
-      tab_index = i
-    elseif focus_grid_index then
-      break
+    if indices[middle] <= grid_index then
+      match = middle
+      low = middle + 1
+    else
+      high = middle - 1
     end
   end
 
-  return tab_index
+  return match > 0 and self._focus_tab_indices[match] or 1
 end
 
 ViewElementOptionsTabIndicator._active_tab_index = function (self)
-  local scroll_amount = self._get_scroll_amount()
-  local active_index = 1
+  local scroll_amount = self._get_scroll_amount() + 0.5
+  local offsets = self._scroll_tab_offsets
+  local low = 1
+  local high = #offsets
+  local match = 1
 
-  for i = 2, #self._tabs do
-    if scroll_amount + 0.5 < self._tabs[i].scroll_offset then
-      break
-    end
+  while low <= high do
+    local middle = math.floor((low + high) * 0.5)
 
-    if self._tabs[i].scroll_offset ~= self._tabs[i - 1].scroll_offset then
-      active_index = i
+    if offsets[middle] <= scroll_amount then
+      match = middle
+      low = middle + 1
+    else
+      high = middle - 1
     end
   end
 
-  return active_index
+  return self._scroll_tab_indices[match]
 end
 
 ViewElementOptionsTabIndicator._ensure_tab_unfaded = function (self, tab_index)
@@ -181,9 +213,11 @@ end
 ViewElementOptionsTabIndicator._refresh_tabs = function (self)
   local panel_width = self._panel_width
   local centered_offset = self._max_scroll_offset == 0 and (panel_width - self._content_width) * 0.5 or 0
+  local hovered_tab_index
+  local pressed_tab_index
 
   for i = 1, #self._tabs do
-    local widget = self._widgets_by_name["tab_" .. i]
+    local widget = self._tab_widgets[i]
     local x = centered_offset + (i - 1) * TAB_PITCH - self._scroll_offset
     local tab_center = x + TAB_WIDTH * 0.5
     local visible = x + TAB_WIDTH >= 0 and x <= panel_width
@@ -200,21 +234,21 @@ ViewElementOptionsTabIndicator._refresh_tabs = function (self)
 
     set_color(widget.style.frame.color, color, alpha)
     set_color(widget.style.fill.color, color, alpha * (i == self._active_index and 0.85 or 0.55))
-  end
-end
 
-ViewElementOptionsTabIndicator._update_tooltip = function (self)
-  local tooltip = self._widgets_by_name.tooltip
-  local hovered_tab_index
-
-  for i = 1, #self._tabs do
-    local widget = self._widgets_by_name["tab_" .. i]
-
-    if widget.content.interactable and widget.content.hotspot.is_hover then
+    if self._using_cursor_navigation and hovered then
       hovered_tab_index = i
-      break
+
+      if hotspot.on_pressed then
+        pressed_tab_index = i
+      end
     end
   end
+
+  return hovered_tab_index, pressed_tab_index
+end
+
+ViewElementOptionsTabIndicator._update_tooltip = function (self, hovered_tab_index)
+  local tooltip = self._widgets_by_name.tooltip
 
   if hovered_tab_index ~= self._hovered_tab_index then
     self._hovered_tab_index = hovered_tab_index
@@ -254,7 +288,6 @@ end
 
 ViewElementOptionsTabIndicator._update_gamepad_prompts = function (self)
   local visible = self._show_gamepad_prompts()
-  local service_type = "View"
   local left_widget = self._widgets_by_name.input_left
   local right_widget = self._widgets_by_name.input_right
 
@@ -262,6 +295,15 @@ ViewElementOptionsTabIndicator._update_gamepad_prompts = function (self)
   right_widget.content.visible = visible
 
   if visible then
+    local device_type = Managers.input:last_pressed_device():type()
+
+    if self._gamepad_prompt_device_type == device_type then
+      return
+    end
+
+    self._gamepad_prompt_device_type = device_type
+
+    local service_type = "View"
     local left_alias = Managers.ui:get_input_alias_key("navigate_primary_left_pressed", service_type)
     local right_alias = Managers.ui:get_input_alias_key("navigate_primary_right_pressed", service_type)
 
@@ -298,16 +340,13 @@ ViewElementOptionsTabIndicator.update = function (self, dt, t, input_service)
   end
 
   self:_update_scroll(dt, input_service)
-  self:_refresh_tabs()
-  self:_update_tooltip()
+  local hovered_tab_index, pressed_tab_index = self:_refresh_tabs()
+
+  self:_update_tooltip(hovered_tab_index)
   self:_update_gamepad_prompts()
 
-  for i = 1, #self._tabs do
-    local widget = self._widgets_by_name["tab_" .. i]
-
-    if self._using_cursor_navigation and widget.content.interactable and widget.content.hotspot.on_pressed then
-      self:_select_tab(i)
-    end
+  if pressed_tab_index then
+    self:_select_tab(pressed_tab_index)
   end
 end
 
@@ -341,7 +380,7 @@ ViewElementOptionsTabIndicator._draw_widgets = function (self, dt, t, input_serv
       self:_update_tooltip_layout(ui_renderer)
     end
 
-    local hovered_widget = self._widgets_by_name["tab_" .. hovered_tab_index]
+    local hovered_widget = self._tab_widgets[hovered_tab_index]
     local tooltip = self._widgets_by_name.tooltip
     local tab_center = hovered_widget.offset[1] + TAB_WIDTH * 0.5
     local panel_left = self._panel_x
