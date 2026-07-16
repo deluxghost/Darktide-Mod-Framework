@@ -470,6 +470,10 @@ local function validate_numeric_data(data)
     dmf.throw_error("[widget \"%s\" (numeric)]: 'unit_text' field must have 'string' type", data.setting_id)
   end
 
+  if data.step_size_value ~= nil and (type(data.step_size_value) ~= "number" or data.step_size_value <= 0) then
+    dmf.throw_error("[widget \"%s\" (numeric)]: 'step_size_value' field must be a positive number", data.setting_id)
+  end
+
   if type(data.decimals_number) ~= "number" or data.decimals_number < 0
     or data.decimals_number ~= math.floor(data.decimals_number) then
     dmf.throw_error("[widget \"%s\" (numeric)]: 'decimals_number' field must be a non-negative integer",
@@ -519,6 +523,7 @@ local function initialize_numeric_data(mod, data, localize)
   new_data.unit_text       = data.unit_text            -- optional
   new_data.range           = data.range
   new_data.decimals_number = data.decimals_number or 0 -- optional
+  new_data.step_size_value = data.step_size_value      -- optional
 
   validate_numeric_data(new_data)
   localize_numeric_data(mod, new_data)
