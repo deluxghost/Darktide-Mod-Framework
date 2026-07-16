@@ -403,7 +403,10 @@ blueprints.value_slider = {
     end
 
     if new_normalized_value then
+      new_normalized_value = math.clamp(new_normalized_value, 0, 1)
+
       local new_value = explode_function(new_normalized_value, entry)
+      new_normalized_value = math.normalize_01(new_value, min_value, max_value)
 
       on_activated(new_value, entry)
       entry.changed_callback(new_value)

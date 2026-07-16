@@ -101,7 +101,14 @@ local create_value_slider_template = function (self, params)
   params.max_value = params.range[2]
   params.min_value = params.range[1]
   params.num_decimals = params.decimals_number
-  params.step_size_value = math.pow(10, params.decimals_number * -1)
+  params.step_size_value = params.step_size_value or math.pow(10, params.decimals_number * -1)
+  params.explode_function = function (normalized_value)
+    local value_range = params.max_value - params.min_value
+    local value = params.min_value + math.clamp(normalized_value, 0, 1) * value_range
+    local step_count = math.round((value - params.min_value) / params.step_size_value)
+
+    return math.clamp(params.min_value + step_count * params.step_size_value, params.min_value, params.max_value)
+  end
   params.type = "value_slider"
   params.format_value_function = params.format_value_function or function (value)
     return string.format(number_format, value)
