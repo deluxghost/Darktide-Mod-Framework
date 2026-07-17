@@ -59,7 +59,7 @@ local function create_checkerboard_passes(width, height, columns, rows, layer)
       pass_type = "rect",
       style_id = "checkerboard_background",
       style = {
-        color = Color.ui_grey_medium(255, true),
+        color = { 255, 255, 255, 255 },
         offset = { 0, 0, layer },
         size = { width, height },
       },
@@ -75,7 +75,7 @@ local function create_checkerboard_passes(width, height, columns, rows, layer)
           pass_type = "rect",
           style_id = string.format("checkerboard_%d_%d", row, column),
           style = {
-            color = Color.black(255, true),
+            color = { 255, 204, 204, 204 },
             offset = { column * tile_width, row * tile_height, layer + 1 },
             size = { tile_width, tile_height },
           },
