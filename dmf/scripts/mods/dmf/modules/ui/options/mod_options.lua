@@ -416,7 +416,7 @@ local function widget_data_to_template(self, data)
     template.search_id = template.search_id or data.setting_id
     template.setting_id = data.setting_id
 
-    if data.has_sub_widgets and (data.type == "checkbox" or data.type == "dropdown") then
+    if data.has_sub_widgets and (data.type == "checkbox" or data.controls_sub_widgets) then
       template.controls_sub_widgets = true
       template.mod_name = data.mod_name
     end
@@ -522,7 +522,7 @@ local function update_widget_set_visibility(widget_set)
 
     if is_visible and parent.type == "checkbox" then
       is_visible = get_mod(parent.mod_name):get(parent.setting_id) == true
-    elseif is_visible and parent.type == "dropdown" then
+    elseif is_visible and parent.type == "dropdown" and parent.controls_sub_widgets then
       local shown_widgets = dropdown_children[parent.index]
 
       if shown_widgets == nil then
