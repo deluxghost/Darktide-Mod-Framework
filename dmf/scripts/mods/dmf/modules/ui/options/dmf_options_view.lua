@@ -442,6 +442,8 @@ DMFOptionsView._setup_options_header = function (self)
     interaction_height_delta = self._ui_scenegraph.settings_grid_interaction.size[2] - settings_grid_scenegraph.size[2],
     mask_height_delta = self._ui_scenegraph.settings_grid_mask.size[2] - settings_grid_scenegraph.size[2],
     scrollbar_height_delta = self._ui_scenegraph.settings_scrollbar.size[2] - settings_grid_scenegraph.size[2],
+    tab_height = _view_settings.settings_tab_height,
+    tab_spacing = _view_settings.settings_tab_spacing,
   }
 
   self._options_header = self:_add_element(ViewElementOptionsHeader, "options_header", 20, {
@@ -464,9 +466,10 @@ DMFOptionsView._setup_category_filter = function (self)
   self._applied_category_filter = ""
 end
 
-DMFOptionsView._set_options_header_layout = function (self, header_height, header_spacing)
+DMFOptionsView._set_options_header_layout = function (self, header_height, header_spacing, show_tab)
   local layout = self._settings_grid_layout
-  local grid_y = layout.header_y + header_height + header_spacing
+  local tab_height = show_tab and layout.tab_height + layout.tab_spacing or 0
+  local grid_y = layout.header_y + header_height + tab_height + header_spacing
   local grid_height = layout.bottom - grid_y
 
   self:_set_scenegraph_position("settings_grid_background", nil, grid_y)
@@ -1389,7 +1392,8 @@ DMFOptionsView.present_category_widgets = function (self, category, category_ent
     self:_clear_header_navigation()
     local header_height, header_spacing = self._options_header:set_category(category_entry)
 
-    self:_set_options_header_layout(header_height, header_spacing)
+    self._settings_header_height = header_height
+    self._settings_header_spacing = header_spacing
     self._applied_options_filter = ""
   end
 
@@ -1401,6 +1405,8 @@ DMFOptionsView.present_category_widgets = function (self, category, category_ent
   if category_data then
     dmf:set("options_menu_last_selected", category)
     clear_tooltip(self)
+    self:_remove_options_tab_indicator()
+    self:_set_options_header_layout(self._settings_header_height, self._settings_header_spacing, false)
 
     local include_ids = category_entry.is_toggle_mods_category or dmf:get(SHOW_MOD_OPTION_IDS_SETTING)
     local grid_data = OptionsFilter.filter(category_data, self._options_header:filter_text(), include_ids)
@@ -1409,9 +1415,19 @@ DMFOptionsView.present_category_widgets = function (self, category, category_ent
 
     for i = 1, #grid_data do
       local data = grid_data[i]
+      local alignment_widget = data.alignment_widget
+      local spacing_before = alignment_widget.spacing_before
 
       widgets[#widgets + 1] = data.widget
-      alignment_widgets[#alignment_widgets + 1] = data.alignment_widget
+
+      if spacing_before and #alignment_widgets > 0 then
+        alignment_widget = table.clone(alignment_widget)
+        alignment_widget.size = table.clone(alignment_widget.size)
+        alignment_widget.size[2] = alignment_widget.size[2] + spacing_before
+        alignment_widget.vertical_alignment = "bottom"
+      end
+
+      alignment_widgets[#alignment_widgets + 1] = alignment_widget
     end
 
     self._settings_content_widgets = widgets
@@ -1424,11 +1440,11 @@ DMFOptionsView.present_category_widgets = function (self, category, category_ent
 
     self:_setup_content_grid_scrollbar(self._settings_content_grid, scrollbar_widget_id, grid_scenegraph_id, grid_pivot_scenegraph_id)
 
+    self:_setup_options_tab_indicator(grid_data, category_entry, tab_scroll_offset)
+
     if presentation.restore_saved_scroll ~= false and self._options_header:filter_text() == "" then
       self:_restore_selected_category_scroll_offset(category_entry)
     end
-
-    self:_setup_options_tab_indicator(grid_data, category_entry, tab_scroll_offset)
 
     self._navigation_widgets[SETTINGS_GRID] = widgets
     self._navigation_grids[SETTINGS_GRID] = self._settings_content_grid
@@ -1821,12 +1837,14 @@ DMFOptionsView._setup_settings_config = function (self, config)
   self._settings_category_widgets = category_widgets
 end
 
-DMFOptionsView._setup_options_tab_indicator = function (self, grid_data, category_entry, tab_scroll_offset)
+DMFOptionsView._remove_options_tab_indicator = function (self)
   if self._options_tab_indicator then
     self:_remove_element("options_tab_indicator")
     self._options_tab_indicator = nil
   end
+end
 
+DMFOptionsView._setup_options_tab_indicator = function (self, grid_data, category_entry, tab_scroll_offset)
   local first_option_index = #grid_data > 0 and 1 or nil
 
   if not first_option_index then
@@ -1899,7 +1917,8 @@ DMFOptionsView._setup_options_tab_indicator = function (self, grid_data, categor
     })
   end
 
-  local scroll_length = self._settings_content_grid:scroll_length()
+  -- Only reserve tab space when the full-height grid already needs scrolling.
+  local base_scroll_length = self._settings_content_grid:scroll_length()
   local tabs = {}
 
   for i = 1, #valid_candidates do
@@ -1922,25 +1941,35 @@ DMFOptionsView._setup_options_tab_indicator = function (self, grid_data, categor
         display_name = candidate.display_name,
         focus_grid_index = focus_grid_index,
         focus_widget = focus_widget,
-        scroll_offset = math.min(math.abs(first_widget.offset[2]), scroll_length),
+        scroll_offset = math.abs(first_widget.offset[2]),
       }
     end
   end
 
-  if tabs[1] then
-    tabs[1].scroll_offset = 0
-  end
-
-  if #tabs <= 1 or scroll_length <= 0 then
+  if #tabs <= 1 or base_scroll_length <= 0 then
     return
   end
 
+  self:_set_options_header_layout(self._settings_header_height, self._settings_header_spacing, true)
+  self._settings_content_grid:on_resolution_modified(self._render_scale)
+  update_scroll_amount(self._widgets_by_name.settings_scrollbar)
+
+  local scroll_length = self._settings_content_grid:scroll_length()
+
+  for i = 1, #tabs do
+    tabs[i].scroll_offset = math.min(tabs[i].scroll_offset, scroll_length)
+  end
+
+  tabs[1].scroll_offset = 0
+
+  local layout = self._settings_grid_layout
   local settings_grid_scenegraph = self._ui_scenegraph.settings_grid_background
 
   self._options_tab_indicator = self:_add_element(ViewElementOptionsTabIndicator, "options_tab_indicator", 20, {
     available_width = settings_grid_scenegraph.size[1],
     available_x = settings_grid_scenegraph.world_position[1],
     initial_scroll_offset = tab_scroll_offset,
+    panel_y = layout.header_y + self._settings_header_height + layout.tab_spacing,
     tabs = tabs,
     get_focused_grid_index = callback(self, "_focused_options_grid_index"),
     get_scroll_amount = callback(self, "settings_scroll_amount"),
@@ -2254,6 +2283,7 @@ DMFOptionsView._create_settings_widget_from_config = function (self, config, cat
   if widget then
     return widget, {
       horizontal_alignment = "right",
+      spacing_before = template.spacing_before,
       size = size,
       name = name
     }

@@ -19,14 +19,14 @@ local category_filter_height = _view_settings.category_filter_height
 local category_filter_spacing = _view_settings.category_filter_spacing
 local category_filter_offset = category_filter_height + category_filter_spacing
 local category_content_height = grid_height - category_filter_offset
-local category_panel_y = 190
+local category_panel_y = 180
 
 local category_mask_size = {
   grid_width + grid_blur_edge_size[1] * 2,
   category_content_height + grid_blur_edge_size[2] * 2
 }
 local settings_header_offset = _view_settings.settings_header_height + _view_settings.settings_header_spacing
-local settings_header_y = 130
+local settings_header_y = _view_settings.settings_header_y
 local settings_grid_y = settings_header_y + settings_header_offset
 local content_bottom = category_panel_y + grid_height
 local settings_grid_height = content_bottom - settings_grid_y
@@ -209,7 +209,7 @@ local scenegraph_definition = {
     },
     position = {
       180,
-      145,
+      135,
       1
     }
   },
