@@ -16,6 +16,7 @@ local TOOLTIP_HORIZONTAL_PADDING = OptionsHeaderDefinitions.tooltip_horizontal_p
 local TOOLTIP_VERTICAL_PADDING = OptionsHeaderDefinitions.tooltip_vertical_padding
 local TOOLTIP_TEXT_MARGIN = 2
 local TOOLTIP_LINE_SPACING = 2
+local TOOLTIP_GAP = 6
 local COLOR_FORMAT_PATTERN = "{#[^}]+}"
 
 local function normalize_single_line(text)
@@ -131,6 +132,7 @@ ViewElementOptionsHeader.init = function (self, parent, draw_layer, start_scale,
   self._on_toggle_changed = context.on_toggle_changed
   self._get_pin_value = context.get_pin_value
   self._get_toggle_value = context.get_toggle_value
+  self._toggle_tooltip_text = dmf:localize("mod_options_toggle_tooltip")
   self._text_layout_dirty = true
 
   local toggle_content = self._widgets_by_name.toggle.content
@@ -199,7 +201,7 @@ ViewElementOptionsHeader.set_category = function (self, category_entry)
   self:_set_scenegraph_size("panel", nil, panel_height)
   self:_force_update_scenegraph()
   self._text_layout_dirty = true
-  self._hovered_text_widget = nil
+  self._hovered_tooltip_widget = nil
   self._tooltip_layout_dirty = nil
   self._widgets_by_name.tooltip.content.visible = false
 
@@ -341,19 +343,44 @@ ViewElementOptionsHeader._update_filter = function (self, input_service)
   FilterInput.update(content, input_service, self._focused_control == "filter")
 end
 
+ViewElementOptionsHeader._position_tooltip = function (self, hovered_widget)
+  local tooltip = self._widgets_by_name.tooltip
+  local _, hovered_height = self:_scenegraph_size(hovered_widget.scenegraph_id)
+  local hovered_position = self:scenegraph_position(hovered_widget.scenegraph_id)
+  local widget_x = hovered_position[1] + hovered_widget.offset[1]
+  local widget_y = hovered_position[2] + hovered_widget.offset[2]
+
+  if hovered_widget == self._widgets_by_name.toggle then
+    local panel_width = self:_scenegraph_size("panel")
+    local tooltip_width = self:_scenegraph_size("tooltip")
+
+    tooltip.offset[1] = panel_width + widget_x - tooltip_width
+    tooltip.offset[2] = widget_y + hovered_height + TOOLTIP_GAP
+  else
+    local text_offset = hovered_widget.style.text.offset
+
+    tooltip.offset[1] = widget_x + (text_offset and text_offset[1] or 0)
+    tooltip.offset[2] = widget_y + hovered_height + TOOLTIP_GAP
+  end
+end
+
 ViewElementOptionsHeader._update_tooltip = function (self)
   local hovered_widget
   local title_widget = self._widgets_by_name.title
   local description_widget = self._widgets_by_name.description
+  local toggle_widget = self._widgets_by_name.toggle
+  local toggle_hotspot = toggle_widget.content.hotspot
 
-  if self._title_tooltip_mod_name and title_widget.content.hotspot.is_hover then
+  if self._has_toggle and (toggle_hotspot.is_hover or toggle_hotspot.is_focused) then
+    hovered_widget = toggle_widget
+  elseif self._title_tooltip_mod_name and title_widget.content.hotspot.is_hover then
     hovered_widget = title_widget
   elseif description_widget.content.differs_from_full_text and description_widget.content.hotspot.is_hover then
     hovered_widget = description_widget
   end
 
-  if hovered_widget ~= self._hovered_text_widget then
-    self._hovered_text_widget = hovered_widget
+  if hovered_widget ~= self._hovered_tooltip_widget then
+    self._hovered_tooltip_widget = hovered_widget
     self._tooltip_layout_dirty = hovered_widget ~= nil
   end
 
@@ -362,14 +389,11 @@ ViewElementOptionsHeader._update_tooltip = function (self)
   tooltip.content.visible = hovered_widget ~= nil
 
   if hovered_widget then
-    local _, hovered_height = self:_scenegraph_size(hovered_widget.scenegraph_id)
-    local hovered_position = self:scenegraph_position(hovered_widget.scenegraph_id)
-    local text_offset = hovered_widget.style.text.offset
-
-    tooltip.content.text = hovered_widget.content.full_text
+    tooltip.content.text = hovered_widget == toggle_widget
+      and self._toggle_tooltip_text
+      or hovered_widget.content.full_text
     tooltip.content.mod_name_text = hovered_widget == title_widget and self._title_tooltip_mod_name or ""
-    tooltip.offset[1] = hovered_position[1] + hovered_widget.offset[1] + (text_offset and text_offset[1] or 0)
-    tooltip.offset[2] = hovered_position[2] + hovered_widget.offset[2] + hovered_height + 6
+    self:_position_tooltip(hovered_widget)
   end
 end
 
@@ -412,13 +436,14 @@ ViewElementOptionsHeader._update_tooltip_layout = function (self, ui_renderer)
 
   self:_set_scenegraph_size("tooltip", width, height)
   self:_force_update_scenegraph()
+  self:_position_tooltip(self._hovered_tooltip_widget)
 
   self._tooltip_layout_dirty = nil
 end
 
 ViewElementOptionsHeader.update = function (self, dt, t, input_service)
   if input_service:is_null_service() then
-    self._hovered_text_widget = nil
+    self._hovered_tooltip_widget = nil
     self._tooltip_layout_dirty = nil
     self._widgets_by_name.tooltip.content.visible = false
 
