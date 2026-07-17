@@ -216,7 +216,7 @@ local function validate_dropdown_data(data)
                        "'string', 'number' or 'boolean' type", data.setting_id, i)
     end
 
-    if option.show_widgets and type(option.show_widgets) ~= "table" then
+    if option.show_widgets ~= nil and type(option.show_widgets) ~= "table" then
       dmf.throw_error("[widget \"%s\" (dropdown)]: 'options[%d]'-> 'show_widgets' field must have 'table' type",
                        data.setting_id, i)
     end
@@ -268,7 +268,9 @@ local function initialize_dropdown_data(mod, data, localize, collapsed_widgets)
   -- Where the 2nd set of numbers are the real widget numbers of subwidgets
   if data.sub_widgets ~= nil then
     for i, option in ipairs(data.options) do
-      if option.show_widgets then
+      if option.show_widgets ~= nil then
+        new_data.controls_sub_widgets = true
+
         local new_show_widgets = {}
         for j, sub_widget_index in ipairs(option.show_widgets) do
           if data.sub_widgets[sub_widget_index] then
