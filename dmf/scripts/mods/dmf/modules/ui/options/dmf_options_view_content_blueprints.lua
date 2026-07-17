@@ -21,7 +21,8 @@ local settings_grid_width = 1000
 local settings_value_width = 500
 local settings_value_height = 64
 
-local group_header_height = 80
+local group_header_height = 50
+local group_header_spacing = 20
 
 local DEFAULT_NUM_DECIMALS = 0
 
@@ -104,6 +105,7 @@ local blueprints = {
       settings_grid_width,
       group_header_height
     },
+    spacing_before = group_header_spacing,
     pass_template = {
       {
         pass_type = "text",

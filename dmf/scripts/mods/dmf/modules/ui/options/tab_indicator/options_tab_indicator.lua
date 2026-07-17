@@ -25,6 +25,7 @@ local TOOLTIP_VERTICAL_PADDING = 12
 local DEFAULT_COLOR = Color.terminal_frame(180, true)
 local HOVER_COLOR = Color.terminal_frame_hover(255, true)
 local ACTIVE_COLOR = Color.terminal_frame_selected(255, true)
+local ACTIVE_HOVER_COLOR = Color.terminal_corner_selected(255, true)
 
 local function set_color(target, source, alpha_multiplier)
   target[1] = source[1] * alpha_multiplier
@@ -43,7 +44,7 @@ ViewElementOptionsTabIndicator.init = function (self, parent, draw_layer, start_
   local tabs = context.tabs
   local panel_width = context.available_width - PANEL_HORIZONTAL_PADDING
   local panel_x = context.available_x + PANEL_HORIZONTAL_PADDING * 0.5
-  local definitions = OptionsTabIndicatorDefinitions.create(#tabs, panel_width, panel_x)
+  local definitions = OptionsTabIndicatorDefinitions.create(#tabs, panel_width, panel_x, context.panel_y)
 
   ViewElementOptionsTabIndicator.super.init(self, parent, draw_layer, start_scale, definitions)
 
@@ -224,7 +225,11 @@ ViewElementOptionsTabIndicator._refresh_tabs = function (self)
     local interactable = tab_center >= 0 and tab_center <= panel_width
     local hotspot = widget.content.hotspot
     local hovered = interactable and hotspot.is_hover
-    local color = i == self._active_index and ACTIVE_COLOR or hovered and HOVER_COLOR or DEFAULT_COLOR
+    local active = i == self._active_index
+    local color = active
+      and (hovered and ACTIVE_HOVER_COLOR or ACTIVE_COLOR)
+      or hovered and HOVER_COLOR
+      or DEFAULT_COLOR
     local alpha = hovered and 1 or self:_edge_alpha(tab_center)
 
     widget.offset[1] = x
@@ -233,7 +238,7 @@ ViewElementOptionsTabIndicator._refresh_tabs = function (self)
     hotspot.force_disabled = not interactable
 
     set_color(widget.style.frame.color, color, alpha)
-    set_color(widget.style.fill.color, color, alpha * (i == self._active_index and 0.85 or 0.55))
+    set_color(widget.style.fill.color, color, alpha * (active and 0.85 or 0.55))
 
     if self._using_cursor_navigation and hovered then
       hovered_tab_index = i

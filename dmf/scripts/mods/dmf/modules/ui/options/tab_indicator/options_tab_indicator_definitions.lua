@@ -1,8 +1,12 @@
+local dmf = get_mod("DMF")
+
+local _view_settings = dmf:io_dofile("dmf/scripts/mods/dmf/modules/ui/options/dmf_options_view_settings")
+
 local UIFontSettings = require("scripts/managers/ui/ui_font_settings")
 local UIWidget = require("scripts/managers/ui/ui_widget")
 local UIWorkspaceSettings = require("scripts/settings/ui/ui_workspace_settings")
 
-local PANEL_HEIGHT = 40
+local PANEL_HEIGHT = _view_settings.settings_tab_height
 local SCREEN_WIDTH = 1920
 local SCREEN_EDGE_PADDING = 20
 local TAB_WIDTH = 32
@@ -17,7 +21,7 @@ local OptionsTabIndicatorDefinitions = {
   tab_width = TAB_WIDTH,
 }
 
-OptionsTabIndicatorDefinitions.create = function (num_tabs, panel_width, panel_x)
+OptionsTabIndicatorDefinitions.create = function (num_tabs, panel_width, panel_x, panel_y)
   local scenegraph_definition = {
     screen = UIWorkspaceSettings.screen,
     panel = {
@@ -25,7 +29,7 @@ OptionsTabIndicatorDefinitions.create = function (num_tabs, panel_width, panel_x
       horizontal_alignment = "left",
       vertical_alignment = "top",
       size = { panel_width, PANEL_HEIGHT },
-      position = { panel_x, 70, 1 },
+      position = { panel_x, panel_y, 1 },
     },
     tooltip = {
       parent = "panel",
