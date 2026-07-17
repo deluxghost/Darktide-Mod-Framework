@@ -58,6 +58,10 @@ return {
     ru = "Включите или отключите ваши моды.",
     ja = "Modを有効化/無効化します。",
   },
+  mod_options_toggle_tooltip = {
+    en = "Toggle this mod",
+    ["zh-cn"] = "开关此模组",
+  },
   ui_scaling = {
     en = "UI Scaling for FHD+ Resolutions",
     es = "Reescalado de la interfaz para resoluciones Full HD+",
