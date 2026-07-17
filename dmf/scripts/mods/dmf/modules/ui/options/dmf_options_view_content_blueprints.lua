@@ -534,6 +534,61 @@ blueprints.slider = {
 }
 
 local max_visible_options = _view_settings.max_visible_dropdown_options or 5
+local DROPDOWN_ICON_ANCHOR_STYLE_ID = "dropdown_icon_anchor"
+
+local function update_dropdown_icon_anchor()
+end
+
+local function dropdown_icon_anchor_pass(pass_template)
+  local value_icon_pass_index
+  local value_icon_style
+
+  for i = 1, #pass_template do
+    local pass = pass_template[i]
+
+    if pass.style_id == "icon" then
+      value_icon_pass_index = i
+      value_icon_style = pass.style
+
+      break
+    end
+  end
+
+  local icon_center_x = value_icon_style.offset[1] + value_icon_style.size[1] * 0.5
+  local anchor_pass = {
+    pass_type = "logic",
+    style_id = DROPDOWN_ICON_ANCHOR_STYLE_ID,
+    value = update_dropdown_icon_anchor,
+    style = {
+      horizontal_alignment = "right",
+      vertical_alignment = "center",
+      size = { 0, 0 },
+      offset = {
+        icon_center_x - settings_grid_width,
+        0,
+        0,
+      },
+    },
+  }
+
+  table.insert(pass_template, value_icon_pass_index, anchor_pass)
+
+  for i = value_icon_pass_index + 1, #pass_template do
+    local pass = pass_template[i]
+    local style_id = pass.style_id
+
+    if style_id == "icon" or style_id and string.match(style_id, "^option_icon_%d+$") then
+      local style = pass.style
+
+      style.inherit_pass_transform = DROPDOWN_ICON_ANCHOR_STYLE_ID
+      style.horizontal_alignment = "center"
+      style.vertical_alignment = "center"
+      style.offset[1] = 0
+    end
+  end
+
+  return pass_template
+end
 
 local function apply_dropdown_icon_style(style, default_style, icon_style)
   table.create_copy(style, default_style)
@@ -565,7 +620,15 @@ blueprints.dropdown = {
     local options = entry.options_function and entry.options_function() or entry.options
     local num_visible_options = math.min(#options, max_visible_options)
 
-    return DropdownPassTemplates.settings_dropdown(size[1], settings_value_height, settings_value_width, num_visible_options, true)
+    local pass_template = DropdownPassTemplates.settings_dropdown(
+      size[1],
+      settings_value_height,
+      settings_value_width,
+      num_visible_options,
+      true
+    )
+
+    return dropdown_icon_anchor_pass(pass_template)
   end,
   init = function (parent, widget, entry, callback_name, changed_callback_name)
     local content = widget.content
