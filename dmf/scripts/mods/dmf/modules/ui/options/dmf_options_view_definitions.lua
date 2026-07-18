@@ -351,12 +351,26 @@ local widget_definitions = {
     {
       pass_type = "rect",
       style = {
-        color = {
-          160,
-          0,
-          0,
+        color = Color.black(255, true)
+      }
+    },
+    {
+      pass_type = "texture",
+      value = "content/ui/materials/backgrounds/terminal_basic",
+      style = {
+        horizontal_alignment = "center",
+        vertical_alignment = "center",
+        scale_to_material = true,
+        size_addition = {
+          40,
+          40
+        },
+        offset = {
+          -20,
+          -20,
           0
-        }
+        },
+        color = Color.terminal_grid_background_gradient(204, true)
       }
     }
   }, "screen"),
