@@ -44,6 +44,7 @@ function DMFMod:init(mod_name)
   set_internal_data(self, "mod_handle",    vanilla_mod_data.handle)
   set_internal_data(self, "version",       mod_file_data.version)
   set_internal_data(self, "author",        mod_file_data.author)
+  self._declared_package_names = mod_file_data.packages
 
   print(string.format("Init DMF mod '%s' [workshop_name: '%s', workshop_id: %s]", mod_name, vanilla_mod_data.name,
                                                                                    vanilla_mod_data.id))
