@@ -2,7 +2,6 @@ local dmf = get_mod("DMF")
 
 local TextInputUtils = dmf:io_dofile("dmf/scripts/mods/dmf/modules/ui/options/text_input_utils")
 
-local TextInputPassTemplates = require("scripts/ui/pass_templates/text_input_pass_templates")
 local UIRenderer = require("scripts/managers/ui/ui_renderer")
 
 local NumericInput = {}
@@ -65,7 +64,7 @@ end
 NumericInput.add_passes = function (parent, entry, passes, input_height)
   local value_pass = find_value_pass(passes)
   local value_style = value_pass.style
-  local input_passes = table.clone(TextInputPassTemplates.simple_input_field)
+  local input_passes = TextInputUtils.clone_simple_input_field()
   local display_style
 
   for i = 1, #input_passes do

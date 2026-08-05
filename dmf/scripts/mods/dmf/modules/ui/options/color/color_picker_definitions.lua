@@ -1,5 +1,8 @@
+local dmf = get_mod("DMF")
+
+local TextInputUtils = dmf:io_dofile("dmf/scripts/mods/dmf/modules/ui/options/text_input_utils")
+
 local ButtonPassTemplates = require("scripts/ui/pass_templates/button_pass_templates")
-local TextInputPassTemplates = require("scripts/ui/pass_templates/text_input_pass_templates")
 local UIResolution = require("scripts/managers/ui/ui_resolution")
 local UIWidget = require("scripts/managers/ui/ui_widget")
 local UIWorkspaceSettings = require("scripts/settings/ui/ui_workspace_settings")
@@ -514,7 +517,7 @@ local function create_definitions(has_alpha)
       size = { field_position[3], FIELD_HEIGHT },
       position = { field_position[1], field_position[2], 3 },
     }
-    local input_passes = table.clone(TextInputPassTemplates.simple_input_field)
+    local input_passes = TextInputUtils.clone_simple_input_field()
 
     for j = 1, #input_passes do
       if input_passes[j].style_id == "limit_text" then

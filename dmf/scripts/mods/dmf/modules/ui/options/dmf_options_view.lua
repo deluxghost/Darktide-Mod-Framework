@@ -1258,9 +1258,13 @@ DMFOptionsView._handle_input = function (self, input_service)
 
     local scrollbar_hotspot = content.scrollbar_hotspot
     local input_hotspot = content.input_hotspot
+    local has_selected_text = content.selected_text and content.selected_text ~= ""
+    local input_hotspot_active = input_hotspot
+      and input_hotspot.is_hover
+      and (not content.is_writing or has_selected_text)
     local selected_control_active = content.drag_active
       or (scrollbar_hotspot and scrollbar_hotspot.is_hover)
-      or (input_hotspot and input_hotspot.is_hover)
+      or input_hotspot_active
     local close_selected_setting = false
 
     local clicked_away = input_service:get("left_pressed") and not selected_control_active
