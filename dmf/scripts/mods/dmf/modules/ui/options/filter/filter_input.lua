@@ -2,8 +2,6 @@ local dmf = get_mod("DMF")
 
 local TextInputUtils = dmf:io_dofile("dmf/scripts/mods/dmf/modules/ui/options/text_input_utils")
 
-local TextInputPassTemplates = require("scripts/ui/pass_templates/text_input_pass_templates")
-
 local FilterInput = {}
 local CLEAR_BUTTON_WIDTH = 40
 local CLEAR_BUTTON_HEIGHT = 44
@@ -17,7 +15,7 @@ local function has_input_text(content)
 end
 
 FilterInput.create_passes = function ()
-  local passes = table.clone(TextInputPassTemplates.simple_input_field)
+  local passes = TextInputUtils.clone_simple_input_field()
 
   for i = 1, #passes do
     local pass = passes[i]

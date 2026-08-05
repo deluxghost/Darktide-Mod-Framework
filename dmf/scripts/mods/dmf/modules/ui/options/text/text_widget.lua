@@ -3,7 +3,6 @@ local dmf = get_mod("DMF")
 local TextInputUtils = dmf:io_dofile("dmf/scripts/mods/dmf/modules/ui/options/text_input_utils")
 
 local ListHeaderPassTemplates = require("scripts/ui/pass_templates/list_header_templates")
-local TextInputPassTemplates = require("scripts/ui/pass_templates/text_input_pass_templates")
 
 local TextWidget = {}
 
@@ -15,7 +14,7 @@ local PLACEHOLDER_DISABLED_ALPHA = 100
 local function create_passes(size, value_width, value_height)
   local x_offset = size[1] - value_width
   local passes = ListHeaderPassTemplates.list_header(x_offset, value_height, true)
-  local input_passes = table.clone(TextInputPassTemplates.simple_input_field)
+  local input_passes = TextInputUtils.clone_simple_input_field()
 
   for i = 1, #input_passes do
     local pass = input_passes[i]
