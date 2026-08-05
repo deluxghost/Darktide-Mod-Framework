@@ -564,6 +564,11 @@ end
 -- ---------------------------------------------------------------------------------------------------------------------
 
 local function initialize_widget_data(mod, data, localize, collapsed_widgets)
+  -- backward compatibility for the legacy widget type
+  if data.type == "text_input" then
+    data.type = "text"
+  end
+
   if data.type == "header" then
     return initialize_header_data(mod, data)
   elseif data.type == "group" then
