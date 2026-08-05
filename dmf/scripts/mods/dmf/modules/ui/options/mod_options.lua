@@ -315,23 +315,18 @@ local create_keybind_template = function (self, params)
     default_value = dmf.local_keys_to_keywatch_result(params.default_value) or {},
 
     on_activated = function (new_value, old_value)
+      -- Unbind the keybind if the new value is empty
+      if not (new_value and new_value.main) then
+        set_keybind(self, params, {})
+        return true
+      end
 
-      -- Prevent unbinding the mod options menu
-      if params.setting_id ~= "open_dmf_options" then
-
-        -- Unbind the keybind if the new value is empty
-        if not (new_value and new_value.main) then
+      -- Unbind the keybind if the new value matches a cancel key
+      for i = 1, #_cancel_keys do
+        local cancel_key = _cancel_keys[i]
+        if cancel_key == new_value.main then
           set_keybind(self, params, {})
           return true
-        end
-
-        -- Unbind the keybind if the new value matches a cancel key
-        for i = 1, #_cancel_keys do
-          local cancel_key = _cancel_keys[i]
-          if cancel_key == new_value.main then
-            set_keybind(self, params, {})
-            return true
-          end
         end
       end
 
@@ -346,8 +341,7 @@ local create_keybind_template = function (self, params)
       -- Get the keys of the new value
       local keys = dmf.keywatch_result_to_local_keys(new_value)
 
-      -- Set the new keybind unless it would unbind the mod options menu
-      if keys and #keys > 0 or params.setting_id ~= "open_dmf_options" then
+      if keys and #keys > 0 then
         set_keybind(self, params, new_value)
         return true
       end

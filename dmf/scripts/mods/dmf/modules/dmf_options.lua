@@ -294,6 +294,14 @@ dmf:hook_origin(CLASS.ModManager, "_check_reload", function ()
   return false
 end)
 
+-- Restore the default binding if the existing setting is bound to Esc.
+local open_dmf_options_keybind = dmf:get("open_dmf_options")
+if type(open_dmf_options_keybind) == "table"
+    and #open_dmf_options_keybind == 1
+    and open_dmf_options_keybind[1] == "esc" then
+  dmf:set("open_dmf_options", {"f4"})
+end
+
 dmf.initialize_mod_data(dmf, dmf_mod_data)
 
 -- first DMF initialization
