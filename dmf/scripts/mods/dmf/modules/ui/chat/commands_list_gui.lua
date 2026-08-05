@@ -91,6 +91,10 @@ end
 
 
 local function draw(commands_list, selected_command_index, ui_renderer)
+  if not ui_renderer or not ui_renderer.gui then
+    return
+  end
+
   local gui = ui_renderer.gui
   local font_data = Managers.font:data_by_type(FONT_TYPE)
   local font = font_data.path
