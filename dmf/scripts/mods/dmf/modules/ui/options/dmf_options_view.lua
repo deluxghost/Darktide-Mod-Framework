@@ -372,6 +372,10 @@ DMFOptionsView.cb_reset_category_to_default = function (self)
           local category_entry = self._selected_category_entry
           local mod_name = category_entry and category_entry.mod_name
 
+          if mod_name then
+            dmf.mod_settings_reset_event(get_mod(mod_name))
+          end
+
           if mod_name and dmf:update_mod_options_visibility(self._options_templates, mod_name) then
             self:_refresh_dynamic_options()
           end
