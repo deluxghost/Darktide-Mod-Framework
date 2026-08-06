@@ -62,6 +62,14 @@ return {
     en = "Toggle this mod",
     ["zh-cn"] = "开关此模组",
   },
+  mod_options_pin_tooltip = {
+    en = "Pin",
+    ["zh-cn"] = "置顶",
+  },
+  mod_options_unpin_tooltip = {
+    en = "Unpin",
+    ["zh-cn"] = "取消置顶",
+  },
   ui_scaling = {
     en = "UI Scaling for FHD+ Resolutions",
     es = "Reescalado de la interfaz para resoluciones Full HD+",
