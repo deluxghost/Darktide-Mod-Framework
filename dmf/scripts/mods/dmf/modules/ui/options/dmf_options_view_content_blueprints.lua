@@ -25,6 +25,9 @@ local group_header_height = 50
 local group_header_spacing = 20
 
 local DEFAULT_NUM_DECIMALS = 0
+local BUTTON_HOLD_INPUT_ACTION = "confirm_hold"
+local BUTTON_HOLD_COLOR = Color.ui_terminal(255, true)
+local BUTTON_DISABLED_HOLD_COLOR = Color.ui_grey_medium(255, true)
 
 local _dropdown_deadzone = 0.25 -- 250ms delay before opening keybind popups
 local _last_dropdown_pressed = -1
@@ -38,6 +41,77 @@ value_font_style.offset = {
 
 local header_font_style = table.clone(UIFontSettings.header_2)
 header_font_style.text_vertical_alignment = "bottom"
+
+local function update_held_button_text(content)
+  local hotspot = content.hotspot
+  local color = hotspot.disabled and BUTTON_DISABLED_HOLD_COLOR or BUTTON_HOLD_COLOR
+  local button_text = content.original_button_text
+  local input_text
+
+  if hotspot.gamepad_active then
+    local service_type = "View"
+    local alias_key = Managers.ui:get_input_alias_key(BUTTON_HOLD_INPUT_ACTION, service_type)
+
+    input_text = InputUtils.input_text_for_current_input_device(service_type, alias_key)
+  end
+
+  if input_text then
+    content.button_text = string.format(
+      "{#color(%d,%d,%d)}%s %s{#reset()} %s",
+      color[2], color[3], color[4], Localize("loc_input_hold"), input_text, button_text
+    )
+  else
+    content.button_text = string.format(
+      "{#color(%d,%d,%d)}%s{#reset()} %s",
+      color[2], color[3], color[4], Localize("loc_input_hold"), button_text
+    )
+  end
+end
+
+
+local function button_pass_template(parent, config, size)
+  local passes = ButtonPassTemplates.settings_button(size[1], settings_value_height, settings_value_width, true)
+
+  if config.button_trigger ~= "held" then
+    return passes
+  end
+
+  local header_width = size[1] - settings_value_width
+  local hold_pass = {
+    pass_type = "rect",
+    style_id = "hold",
+    style = {
+      horizontal_alignment = "left",
+      vertical_alignment = "top",
+      color = { 150, 0, 0, 0 },
+      offset = { header_width, 0, 3 },
+      size = { 0, settings_value_height },
+    },
+    change_function = function (content, style)
+      style.size[1] = settings_value_width * (content.hold_progress or 0)
+    end,
+  }
+
+  for i = 1, #passes do
+    local pass = passes[i]
+
+    if pass.value_id == "button_text" then
+      local change_function = pass.change_function
+
+      pass.change_function = function (content, style)
+        update_held_button_text(content)
+        change_function(content, style)
+      end
+
+      table.insert(passes, i, hold_pass)
+
+      break
+    end
+  end
+
+  return passes
+end
+
 
 local blueprints = {
   spacing_vertical = {
@@ -76,29 +150,51 @@ local blueprints = {
       settings_grid_width,
       settings_value_height
     },
-    pass_template = ButtonPassTemplates.settings_button(settings_grid_width, settings_value_height, settings_value_width, true),
+    pass_template_function = button_pass_template,
     init = function (parent, widget, entry, callback_name, changed_callback_name)
       local content = widget.content
+      local hotspot = content.hotspot
 
-      content.hotspot.pressed_callback = function ()
-        local is_disabled = entry.disabled or false
+      content.text = entry.display_name
+      content.button_text = entry.button_text
+      content.original_button_text = entry.button_text
+      content.entry = entry
 
-        if is_disabled then
+      local pressed_callback = function ()
+        if entry.disabled then
           return
         end
 
         callback(parent, callback_name, widget, entry)()
       end
 
-      local display_name = entry.display_name
-      content.text = display_name
-      content.button_text = Localize("loc_settings_change")
-      content.entry = entry
-
-      entry.changed_callback = function (changed_value)
-        callback(parent, changed_callback_name, widget, entry)()
+      if entry.button_trigger == "held" then
+        content.timer = entry.button_hold_duration
+        content.current_timer = 0
+        content.hold_progress = 0
+        content.start_delay = 0
+        content.input_action = BUTTON_HOLD_INPUT_ACTION
+        content.keep_hold_active = false
+        content.complete_function = pressed_callback
+        hotspot.pressed_callback = nil
+      else
+        hotspot.pressed_callback = pressed_callback
       end
-    end
+    end,
+    update = function (parent, widget, input_service, dt, t)
+      local content = widget.content
+      local entry = content.entry
+      local is_disabled = entry.disabled or false
+
+      content.disabled = is_disabled
+      content.hotspot.disabled = is_disabled
+
+      if entry.button_trigger == "held" then
+        ButtonPassTemplates.terminal_button_hold_small.update(parent, widget, {
+          input_service = input_service,
+        }, dt)
+      end
+    end,
   },
   group_header = {
     size = {
