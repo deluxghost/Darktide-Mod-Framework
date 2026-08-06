@@ -314,7 +314,7 @@ dmf:hook(CLASS.ConstantElementChat, "_draw_widgets", function(
 
   if _chat_opened and #_commands_list > 0 then
     initialize_drawing_function()
-    _commands_list_gui_draw(_commands_list, _command_index, ui_renderer)
+    _commands_list_gui_draw(self, _commands_list, _command_index, ui_renderer)
   end
 
   return result
