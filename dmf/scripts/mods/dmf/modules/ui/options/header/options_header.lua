@@ -9,6 +9,7 @@ local FilterInput = dmf:io_dofile("dmf/scripts/mods/dmf/modules/ui/options/filte
 local Text = require("scripts/utilities/ui/text")
 
 local ELLIPSIS = "..."
+local RESET_FORMAT = "{#reset()}"
 local TEXT_FIT_PROBES = 16
 local TEXT_MEASUREMENT_BOUND = 100000
 local TOOLTIP_MAX_WIDTH = 600
@@ -17,7 +18,7 @@ local TOOLTIP_VERTICAL_PADDING = OptionsHeaderDefinitions.tooltip_vertical_paddi
 local TOOLTIP_TEXT_MARGIN = 2
 local TOOLTIP_LINE_SPACING = 2
 local TOOLTIP_GAP = 6
-local COLOR_FORMAT_PATTERN = "{#[^}]+}"
+local TEXT_FORMAT_PATTERN = "{#[^}]+}"
 
 local function normalize_single_line(text)
   return tostring(text or ""):gsub("[\r\n]+", " ")
@@ -50,7 +51,7 @@ local function text_fits(ui_renderer, text, style, max_width)
 end
 
 local function visible_text_length(text)
-  return Utf8.string_length(text:gsub(COLOR_FORMAT_PATTERN, ""))
+  return Utf8.string_length(text:gsub(TEXT_FORMAT_PATTERN, ""))
 end
 
 local function visible_text_prefix(text, length)
@@ -59,7 +60,7 @@ local function visible_text_prefix(text, length)
   local remaining = length
 
   while byte_index <= #text do
-    local format_start, format_end = string.find(text, COLOR_FORMAT_PATTERN, byte_index)
+    local format_start, format_end = string.find(text, TEXT_FORMAT_PATTERN, byte_index)
     local plain_end = format_start and format_start - 1 or #text
 
     if byte_index <= plain_end then
@@ -98,7 +99,9 @@ local function truncate_text(ui_renderer, text, style, max_width)
     return text, display_changed
   end
 
-  if not text_fits(ui_renderer, ELLIPSIS, style, max_width) then
+  local ellipsis = RESET_FORMAT .. ELLIPSIS
+
+  if not text_fits(ui_renderer, ellipsis, style, max_width) then
     return "", true
   end
 
@@ -109,7 +112,7 @@ local function truncate_text(ui_renderer, text, style, max_width)
     local middle = math.ceil((low + high) * 0.5)
     local prefix = middle > 0 and visible_text_prefix(text, middle) or ""
 
-    if text_fits(ui_renderer, prefix .. ELLIPSIS, style, max_width) then
+    if text_fits(ui_renderer, prefix .. ellipsis, style, max_width) then
       low = middle
     else
       high = middle - 1
@@ -118,7 +121,7 @@ local function truncate_text(ui_renderer, text, style, max_width)
 
   local prefix = low > 0 and visible_text_prefix(text, low) or ""
 
-  return prefix .. ELLIPSIS, true
+  return prefix .. ellipsis, true
 end
 
 local ViewElementOptionsHeader = class("ViewElementOptionsHeader", "ViewElementBase")
@@ -132,6 +135,8 @@ ViewElementOptionsHeader.init = function (self, parent, draw_layer, start_scale,
   self._on_toggle_changed = context.on_toggle_changed
   self._get_pin_value = context.get_pin_value
   self._get_toggle_value = context.get_toggle_value
+  self._pin_tooltip_text = dmf:localize("mod_options_pin_tooltip")
+  self._unpin_tooltip_text = dmf:localize("mod_options_unpin_tooltip")
   self._toggle_tooltip_text = dmf:localize("mod_options_toggle_tooltip")
   self._text_layout_dirty = true
 
@@ -356,6 +361,12 @@ ViewElementOptionsHeader._position_tooltip = function (self, hovered_widget)
 
     tooltip.offset[1] = panel_width + widget_x - tooltip_width
     tooltip.offset[2] = widget_y + hovered_height + TOOLTIP_GAP
+  elseif hovered_widget == self._widgets_by_name.pin then
+    local tooltip_width = self:_scenegraph_size("tooltip")
+    local pin_width = self:_scenegraph_size(hovered_widget.scenegraph_id)
+
+    tooltip.offset[1] = widget_x + (pin_width - tooltip_width) * 0.5
+    tooltip.offset[2] = widget_y + hovered_height + TOOLTIP_GAP
   else
     local text_offset = hovered_widget.style.text.offset
 
@@ -368,31 +379,48 @@ ViewElementOptionsHeader._update_tooltip = function (self)
   local hovered_widget
   local title_widget = self._widgets_by_name.title
   local description_widget = self._widgets_by_name.description
+  local pin_widget = self._widgets_by_name.pin
   local toggle_widget = self._widgets_by_name.toggle
+  local pin_hotspot = pin_widget.content.hotspot
   local toggle_hotspot = toggle_widget.content.hotspot
 
   if self._has_toggle and (toggle_hotspot.is_hover or toggle_hotspot.is_focused) then
     hovered_widget = toggle_widget
+  elseif self._has_pin and (pin_hotspot.is_hover or pin_hotspot.is_focused) then
+    hovered_widget = pin_widget
   elseif self._title_tooltip_mod_name and title_widget.content.hotspot.is_hover then
     hovered_widget = title_widget
   elseif description_widget.content.differs_from_full_text and description_widget.content.hotspot.is_hover then
     hovered_widget = description_widget
   end
 
-  if hovered_widget ~= self._hovered_tooltip_widget then
+  local tooltip = self._widgets_by_name.tooltip
+  local tooltip_text
+
+  if hovered_widget == toggle_widget then
+    tooltip_text = self._toggle_tooltip_text
+  elseif hovered_widget == pin_widget then
+    tooltip_text = pin_widget.content.is_pinned and self._unpin_tooltip_text or self._pin_tooltip_text
+  elseif hovered_widget then
+    tooltip_text = hovered_widget.content.full_text
+  end
+
+  local mod_name_text = hovered_widget == title_widget and self._title_tooltip_mod_name or ""
+  local tooltip_content_changed = hovered_widget and (
+    tooltip.content.text ~= tooltip_text
+    or tooltip.content.mod_name_text ~= mod_name_text
+  )
+
+  if hovered_widget ~= self._hovered_tooltip_widget or tooltip_content_changed then
     self._hovered_tooltip_widget = hovered_widget
     self._tooltip_layout_dirty = hovered_widget ~= nil
   end
 
-  local tooltip = self._widgets_by_name.tooltip
-
   tooltip.content.visible = hovered_widget ~= nil
 
   if hovered_widget then
-    tooltip.content.text = hovered_widget == toggle_widget
-      and self._toggle_tooltip_text
-      or hovered_widget.content.full_text
-    tooltip.content.mod_name_text = hovered_widget == title_widget and self._title_tooltip_mod_name or ""
+    tooltip.content.text = tooltip_text
+    tooltip.content.mod_name_text = mod_name_text
     self:_position_tooltip(hovered_widget)
   end
 end
