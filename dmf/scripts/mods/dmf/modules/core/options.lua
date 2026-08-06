@@ -154,6 +154,56 @@ local function initialize_group_data(mod, data, localize, collapsed_widgets)
 end
 
 -- ---------------------------------------------------------------------------------------------------------------------
+-- ----| Button |-------------------------------------------------------------------------------------------------------
+-- ---------------------------------------------------------------------------------------------------------------------
+
+local DEFAULT_BUTTON_HOLD_DURATION = 1
+local allowed_button_triggers = {
+  pressed = true,
+  held = true,
+}
+local function validate_button_data(data)
+  if type(data.button_text) ~= "string" then
+    dmf.throw_error("[widget \"%s\" (button)]: 'button_text' field is required and must have 'string' type",
+                     data.setting_id)
+  end
+
+  if not allowed_button_triggers[data.button_trigger] then
+    dmf.throw_error("[widget \"%s\" (button)]: 'button_trigger' field must contain string \"pressed\" or \"held\"",
+                     data.setting_id)
+  end
+
+  if type(data.function_name) ~= "string" then
+    dmf.throw_error("[widget \"%s\" (button)]: 'function_name' field is required and must have 'string' type",
+                     data.setting_id)
+  end
+
+  if type(data.button_hold_duration) ~= "number" or data.button_hold_duration <= 0 then
+    dmf.throw_error("[widget \"%s\" (button)]: 'button_hold_duration' field must be a positive number",
+                     data.setting_id)
+  end
+end
+
+
+local function initialize_button_data(mod, data, localize)
+  local new_data = initialize_generic_widget_data(mod, data, localize)
+
+  new_data.button_text = data.button_text
+  new_data.button_trigger = data.button_trigger or "pressed"
+  new_data.button_hold_duration = data.button_hold_duration or DEFAULT_BUTTON_HOLD_DURATION
+  new_data.function_name = data.function_name
+
+  validate_button_data(new_data)
+
+  if new_data.localize then
+    new_data.button_text = mod:localize(new_data.button_text)
+  end
+
+  return new_data
+end
+
+
+-- ---------------------------------------------------------------------------------------------------------------------
 -- ----| Checkbox |-----------------------------------------------------------------------------------------------------
 -- ---------------------------------------------------------------------------------------------------------------------
 
@@ -573,6 +623,8 @@ local function initialize_widget_data(mod, data, localize, collapsed_widgets)
     return initialize_header_data(mod, data)
   elseif data.type == "group" then
     return initialize_group_data(mod, data, localize, collapsed_widgets)
+  elseif data.type == "button" then
+    return initialize_button_data(mod, data, localize)
   elseif data.type == "checkbox" then
     return initialize_checkbox_data(mod, data, localize, collapsed_widgets)
   elseif data.type == "dropdown" then
@@ -667,7 +719,7 @@ end
 local function initialize_default_settings_and_keybinds(mod, initialized_widgets_data)
   for i = 2, #initialized_widgets_data do
     local data = initialized_widgets_data[i]
-    if mod:get(data.setting_id) == nil and data.type ~= "group" then
+    if mod:get(data.setting_id) == nil and data.type ~= "group" and data.type ~= "button" then
       mod:set(data.setting_id, data.default_value)
     end
     if data.type == "keybind" then

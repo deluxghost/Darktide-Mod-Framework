@@ -45,6 +45,44 @@ local create_group_template = function(self, params)
 end
 _type_template_map["group"] = create_group_template
 
+-- ##########################
+-- ###### Button ############
+-- ##########################
+
+local function call_button_function(mod, function_name)
+  local func = mod[function_name]
+
+  if type(func) == "function" then
+    dmf.safe_call_nr(mod, {"[Button] function_call 'mod.%s'", function_name}, func)
+  else
+    mod:error("[Button] function_call 'mod.%s': function was not found.", function_name)
+  end
+end
+
+
+local create_button_template = function (self, params)
+  local mod = get_mod(params.mod_name)
+  local function_name = params.function_name
+  local template = {
+    after = params.parent_index,
+    button_hold_duration = params.button_hold_duration,
+    button_text = params.button_text,
+    button_trigger = params.button_trigger,
+    category = params.category,
+    display_name = params.title,
+    indentation_level = params.depth,
+    mod_name = params.mod_name,
+    tooltip_text = params.tooltip,
+    widget_type = "button",
+    pressed_function = function ()
+      call_button_function(mod, function_name)
+    end,
+  }
+
+  return template
+end
+_type_template_map["button"] = create_button_template
+
 -- ###########################
 -- ###### Percent Slider #####
 -- ###########################
