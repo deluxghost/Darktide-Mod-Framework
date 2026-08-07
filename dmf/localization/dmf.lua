@@ -1,6 +1,7 @@
 return {
   dmf_mod_name = {
     en = "Darktide Mod Framework",
+    ru = "Фрэймворк модов Дарктайд",
     ["zh-cn"] = "暗潮模组基础框架",
   },
   mods_options = {
@@ -20,7 +21,7 @@ return {
   open_dmf_options_description = {
     en = "Keybind for opening and closing mods options menu.",
     es = "Atajo para abrir/cerrar el menu de configuración de mods.",
-    ru = "Клавиша/сочетание клавиш для открытия и закрытия меню настроек модов.",
+    ru = "Кнопка для открытия и закрытия меню настроек модов.",
     ["zh-cn"] = "打开关闭模组选项菜单的按键绑定。",
     ja = "オプションメニューを開閉するキーバインド",
   },
@@ -33,41 +34,45 @@ return {
   },
   dmf_options_remember_scroll_position = {
     en = "Remember Options Scroll Position",
+    ru = "Запоминать положение прокрутки в настройках",
     ["zh-cn"] = "记住选项滚动位置",
   },
   dmf_first_run_notification = {
     en = "Welcome to the Darktide Mod Framework. Mod options have been added to the Options Menu.",
     es = "Bienvenidos a el Mod Framework de Darktide. Hemos agregado las opciones de Mod a el menu de opciones.",
-    de = "Willkommen beim Darktide Mod Framework. Ein Button für Mod-Optionen wurde dem Hauptmenu hinzugefügt.",
+    ru = "Добро пожаловать во Фрэймворк модов Дарктайд. Настройки модов были добавлены в меню настроек.",
     ["zh-cn"] = "欢迎使用 Darktide Mod Framework。模组选项已添加到选项菜单。",
-    ru = "Добро пожаловать в Darktide Mod Framework. Параметры мода были добавлены в меню параметров.",
     ja = "Darktide Mod Frameworkのご利用ありがとうございます。Modオプションがオプションメニューに追加されました。",
+    de = "Willkommen beim Darktide Mod Framework. Ein Button für Mod-Optionen wurde dem Hauptmenu hinzugefügt.",
   },
   percent = {
     en = "%%",
   },
   toggle_mods = {
     en = "Toggle Mods",
-    ["zh-cn"] = "开启关闭模组",
     ru = "Включение/выключение модов",
+    ["zh-cn"] = "开启关闭模组",
     ja = "Modのオン/オフ",
   },
   toggle_mods_description = {
     en = "Enable or disable your mods.",
+    ru = "Включайте или отключайте ваши моды.",
     ["zh-cn"] = "启用或禁用安装的模组。",
-    ru = "Включите или отключите ваши моды.",
     ja = "Modを有効化/無効化します。",
   },
   mod_options_toggle_tooltip = {
     en = "Toggle this mod",
+    ru = "Включите/выключите этот мод",
     ["zh-cn"] = "开关此模组",
   },
   mod_options_pin_tooltip = {
     en = "Pin",
+    ru = "Закрепить",
     ["zh-cn"] = "置顶",
   },
   mod_options_unpin_tooltip = {
     en = "Unpin",
+    ru = "Открепить",
     ["zh-cn"] = "取消置顶",
   },
   ui_scaling = {
@@ -80,7 +85,7 @@ return {
   ui_scaling_description = {
     en = "Automatically scale UI when resolution exceeds 1080p.",
     es = "Redimensionar automáticamente la interfaz cuando la resolución exceda 1080p.",
-    ru = "Нормализует масштаб элементов интерфейса, если разрешений экрана превышает 1080p.",
+    ru = "Автоматически нормализует масштаб элементов интерфейса, если разрешение экрана превышает 1080p.",
     ["zh-cn"] = "分辨率超过 1080p 时自动缩放 UI",
     ja = "1080pを超える解像度でUIの大きさを自動調節します。",
   },
@@ -94,7 +99,7 @@ return {
   developer_mode_description = {
     en = "Allows you to reload DMF and mods and gives you access to some debug features.",
     es = "Permite recargar los mods y configurar herramientas de depuración.",
-    ru = "Позволяет перезагружать DMF и моды и даёт доступ к инструментам отладки.",
+    ru = "Позволяет перезагружать DMF и моды, а также даёт доступ к инструментам отладки.",
     ["zh-cn"] = "允许重新加载 DMF 和模组，并启用一些调试功能。",
     ja = "DMFとModのリロードや、いくつかのデバッグ機能へのアクセスを可能にします。",
   },
@@ -108,24 +113,28 @@ return {
   show_developer_console_description = {
     en = "Opens up the new window showing game log in real time.",
     es = "Abre una ventana que muestra el registro (log) del juego en tiempo real.",
-    ru = "Открывает новое окно, в которое в реальном времени выводится игровой лог.",
+    ru = "Открывает новое окно, отображающее игровой лог в реальном времени.",
     ["zh-cn"] = "在一个新窗口中显示游戏实时日志。",
     ja = "ゲームのログをリアルタイムで表示する新たなウィンドウを開きます。",
   },
   log_to_developer_console = {
     en = "Output Logs to Developer Console",
+    ru = "Вывод логов в консоль разработчика",
     ["zh-cn"] = "输出日志到开发者控制台",
   },
   log_to_developer_console_description = {
     en = "Also displays messages written to the log file in the developer console.",
+    ru = "Также отображает в консоли разработчика сообщения, записываемые в лог-файл.",
     ["zh-cn"] = "同时在开发者控制台中显示最终写入日志文件的消息。",
   },
   show_mod_option_ids = {
     en = "Show Mod Option IDs",
+    ru = "Показать идентификаторы настроек мода",
     ["zh-cn"] = "显示模组选项 ID",
   },
   show_mod_option_ids_description = {
     en = "Displays the setting ID at the top of each mod option tooltip.",
+    ru = "Отображает идентификатор параметра в верхней части всплывающей подсказки для каждой настройки мода.",
     ["zh-cn"] = "在每个模组选项的提示文本顶部显示设置 ID。",
   },
   toggle_developer_console = {
@@ -137,10 +146,12 @@ return {
   },
   reload_mods = {
     en = "Reload Mods",
+    ru = "Перезагрузить моды",
     ["zh-cn"] = "重新加载模组",
   },
   reload_mods_description = {
     en = "Reloads all mods.",
+    ru = "Перезагружает все моды.",
     ["zh-cn"] = "重新加载所有模组。",
   },
   show_network_debug_info = {
@@ -165,7 +176,7 @@ return {
   log_ui_renderers_info = {
     en = "Log UI Renderers Creation Info",
     es = "Depurar la renderización de la interfaz de usuario",
-    ru = "Логирование информации при создании UI Renderer",
+    ru = "Логирование информации при создании рендеров интерфейса",
     ["zh-cn"] = "记录 UI 渲染器创建信息",
     ja = "UIレンダラー生成情報の記録",
   },
@@ -174,7 +185,7 @@ return {
          "The method 'info' is used for the logging.",
     es = "Escribe en el registro cada vez que se inicialize un renderizador de la interfaz.\n\n" ..
          "Esta información se registra en el nivel 'info'.",
-    ru = "Логирование имени создателя UI Renderer'а и всех материалов, переданных в качестве аргументов.\n\n" ..
+    ru = "Логирование названия создателя рендера интерфейса и всех материалов, переданных в качестве аргументов.\n\n" ..
          "Для логирования используется метод 'info'.",
     ["zh-cn"] = "记录 UI 渲染器的创建者名称以及作为参数传入的所有材质。\n\n" ..
          "记录日志时会使用 'info' 方法。",
@@ -198,7 +209,7 @@ return {
   settings_custom = {
     en = "Custom",
     es = "Personalizado",
-    ru = "Пользовательские",
+    ru = "Свои",
     ["zh-cn"] = "自定义",
     ja = "カスタム",
   },
@@ -266,8 +277,8 @@ return {
   },
   output_notification = {
     en = "Notification",
-    ["zh-cn"] = "通知",
     ru = "Уведомление",
+    ["zh-cn"] = "通知",
     ja = "通知",
   },
   output_log_and_chat = {
@@ -279,20 +290,20 @@ return {
   },
   output_all = {
     en = "All",
-    ["zh-cn"] = "全部",
     ru = "Все",
+    ["zh-cn"] = "全部",
     ja = "すべて",
   },
   output_log_and_notification = {
     en = "Log & Notification",
-    ["zh-cn"] = "日志与通知",
     ru = "Лог и Уведомление",
+    ["zh-cn"] = "日志与通知",
     ja = "ログと通知",
   },
   output_chat_and_notification = {
     en = "Chat & Notification",
-    ["zh-cn"] = "聊天与通知",
     ru = "Чат и Уведомление",
+    ["zh-cn"] = "聊天与通知",
     ja = "チャットと通知",
   },
   chat_history_enable = {
@@ -324,7 +335,7 @@ return {
   chat_history_save_description = {
     en = "Your chat input history will be saved even after reloading your game (or just DMF).",
     es = "El texto que introduzcas en el chat se guardara incluso al recargar el juego (o solo DMF)",
-    ru = "Когда игрок выключает игру (или перезагружает DMF), DMF cохраняет историю ввода в файл настроек, чтобы загрузить её при следующем запуске игры.",
+    ru = "История ваших сообщений в чате будет сохранена даже после перезагрузки игры (или DMF).",
     ["zh-cn"] = "即使重新启动游戏（或者重新加载 DMF），仍然保存聊天输入历史记录。",
     ja = "ゲームの再起動 (またはDMFのリロード) 後もチャットの入力履歴が保持されます。",
   },
@@ -404,7 +415,7 @@ return {
          "WARNING: Changing this setting will erase your chat history.",
     es = "Solo los comandos ejecutados exitosamente serán salvados en el historial.\n\n" ..
          "ATENCIÓN: Cambiar esta preferencia borra el historial del chat.",
-    ru = "Только успешно выполненные команды будут сохранены в истории ввода.\n\n" ..
+    ru = "Только успешно выполненные команды будут сохранены в историю ввода в чат.\n\n" ..
          "ВНИМАНИЕ: изменение этой настройки очистит вашу историю ввода.",
     ["zh-cn"] = "只有成功执行的命令才会保存在聊天历史记录里。\n\n" ..
          "警告：更改此设置会删除所有聊天历史记录。",
@@ -414,21 +425,21 @@ return {
 
   chat_command_not_recognized = {
     en = "Command not recognized",
-    ["zh-cn"] = "无法识别的命令",
     ru = "Команда не распознана",
+    ["zh-cn"] = "无法识别的命令",
     ja = "不明なコマンド",
   },
   clean_chat_history = {
     en = "cleans chat input history",
     es = "Borra el historial de usuario",
-    ru = "очищает историю ввода",
+    ru = "очищает историю ввода в чат",
     ["zh-cn"] = "清除聊天输入历史记录",
     ja = "チャット入力履歴の消去",
   },
   clean_chat_notifications = {
     en = "cleans chat notification alerts",
+    ru = "очищает уведомления чата",
     ["zh-cn"] = "清除聊天通知警告",
-    ru = "очищает предупреждения об уведомлениях чата",
     ja = "チャット通知警告の消去",
   },
   dev_console_opened = {
@@ -447,8 +458,8 @@ return {
   },
   dev_console_close_warning = {
     en = "The developer console is disabled, but must be closed manually.",
+    ru = "Консоль разработчика отключена, но её необходимо закрыть вручную.",
     ["zh-cn"] = "开发者控制台已禁用，但必须手动关闭。",
-    ru = "Консоль разработчика отключена, но ее необходимо закрыть вручную.",
     ja = "開発者コンソールが無効になっていますが、手動で閉じる必要があります。",
   },
 
@@ -458,40 +469,40 @@ return {
   mutator_no_description_provided = {
     en = "No description provided.",
     es = "No se proporcionó una descripción.",
+    ru = "Описание отсутствует.",
     ["zh-cn"] = "未提供描述。",
-    ru = "Описание не предоставлено.",
     ja = "説明がありません。",
   },
 
   -- Difficulties' names
   lowest = {
     en = "Sedition",
-    ["zh-cn"] = "煽动",
     ru = "Мятеж",
+    ["zh-cn"] = "煽动",
     ja = "反乱",
   },
   low = {
     en = "Uprising",
-    ["zh-cn"] = "暴乱",
     ru = "Восстание",
+    ["zh-cn"] = "暴乱",
     ja = "アップライジング",
   },
   medium = {
     en = "Malice",
-    ["zh-cn"] = "憎恶",
     ru = "Злоба",
+    ["zh-cn"] = "憎恶",
     ja = "悪意",
   },
   high = {
     en = "Heresy",
-    ["zh-cn"] = "异端",
     ru = "Ересь",
+    ["zh-cn"] = "异端",
     ja = "異端",
   },
   highest = {
     en = "Damnation",
-    ["zh-cn"] = "诅咒",
     ru = "Проклятие",
+    ["zh-cn"] = "诅咒",
     ja = "破滅",
   },
 
@@ -499,51 +510,51 @@ return {
   broadcast_enabled_mutators = {
     en = "ENABLED MUTATORS",
     es = "MUTACIONES ACTIVADAS",
+    ru = "ВКЛЮЧЁННЫЕ МУТАТОРЫ",
     ["zh-cn"] = "启用突变器",
-    ru = "МУТАТОРЫ ВКЛЮЧЕНЫ",
     ja = "ミューテーターが有効化されました",
   },
   broadcast_all_disabled = {
     en = "ALL MUTATORS DISABLED",
     es = "TODAS LAS MUTACIONES DESACTIVADAS",
-    ["zh-cn"] = "禁用所有突变器",
     ru = "ВСЕ МУТАТОРЫ ОТКЛЮЧЕНЫ",
+    ["zh-cn"] = "禁用所有突变器",
     ja = "すべてのミューテーターが無効化されました",
   },
   broadcast_disabled_mutators = {
     en = "MUTATORS DISABLED",
     es = "MUTACIONES DESACTIVADAS",
-    ["zh-cn"] = "禁用突变器",
     ru = "МУТАТОРЫ ОТКЛЮЧЕНЫ",
+    ["zh-cn"] = "禁用突变器",
     ja = "ミューテーターが無効化されました",
   },
   local_disabled_mutators = {
     en = "Mutators disabled",
     es = "Mutaciones desactivadas",
-    ["zh-cn"] = "突变器已禁用",
     ru = "Мутаторы отключены",
+    ["zh-cn"] = "突变器已禁用",
     ja = "ミューテーターが無効化されました",
   },
   whisper_enabled_mutators = {
     en = "[Automated message] This lobby has the following mutators active",
     es = "[Mensaje automático] Esta partida tiene las siguientes mutaciones",
-    ["zh-cn"] = "[自动消息] 此大厅激活了以下突变器",
     ru = "[Автоматическое сообщение] В этом лобби активны следующие мутаторы",
+    ["zh-cn"] = "[自动消息] 此大厅激活了以下突变器",
     ja = "[自動メッセージ] このロビーでは以下のミューテーターが有効になっています",
   },
 
   disabled_reason_not_server = {
     en = "because you're no longer the host",
     es = "porque ya no eres el anfitrión",
-    ["zh-cn"] = "因为你不再是主机",
     ru = "потому что вы больше не хост",
+    ["zh-cn"] = "因为你不再是主机",
     ja = "あなたがホストではなくなったため",
   },
   disabled_reason_difficulty_change = {
     en = "DUE TO CHANGE IN DIFFICULTY",
     es = "DEBIDO A UN CAMBIO DE DIFICULTAD",
-    ["zh-cn"] = "由于难度变更",
     ru = "ИЗ-ЗА ИЗМЕНЕНИЯ СЛОЖНОСТИ",
+    ["zh-cn"] = "由于难度变更",
     ja = "難易度が変更されたため",
   },
 
@@ -551,29 +562,29 @@ return {
   mutators_title = {
     en = "Mutators",
     es = "Mutaciones",
-    ["zh-cn"] = "突变器",
     ru = "Мутаторы",
+    ["zh-cn"] = "突变器",
     ja = "ミューテーター",
   },
   mutators_banner_description = {
     en = "Enable and disable mutators",
     es = "Activa y desactiva las mutaciones",
+    ru = "Включение и отключение мутаторов",
     ["zh-cn"] = "启用和禁用突变器",
-    ru = "Включить и отключить мутаторы",
     ja = "ミューテーターのオン/オフ",
   },
   no_mutators = {
     en = "No mutators installed",
     es = "No hay mutaciones instaladas",
-    ["zh-cn"] = "未安装突变器",
     ru = "Нет установленных мутаторов",
+    ["zh-cn"] = "未安装突变器",
     ja = "ミューテーターがインストールされていません",
   },
   no_mutators_description = {
     en = "Subscribe to mods and mutators on the workshop",
     es = "Subscribete a mutaciones en el Steam Workshop",
-    ["zh-cn"] = "在创意工坊订阅模组和突变器",
     ru = "Подпишитесь на моды и мутаторы в мастерской Steam",
+    ["zh-cn"] = "在创意工坊订阅模组和突变器",
     ja = "ワークショップでModやミューテーターをサブスクライブしてください",
   },
 
@@ -581,74 +592,74 @@ return {
   tooltip_incompatible_mutators = {
     en = "\n\n-- INCOMPATIBLE WITH MUTATORS --\n",
     es = "\n\n-- INCOMPATIBLE CON LAS MUTACIONES --\n",
-    ["zh-cn"] = "\n\n-- 不兼容突变器 --\n",
     ru = "\n\n-- НЕСОВМЕСТИМО С МУТАТОРАМИ --\n",
+    ["zh-cn"] = "\n\n-- 不兼容突变器 --\n",
     ja = "\n\n-- ミューテーターと互換性なし --\n",
   },
   tooltip_compatible_mutators = {
     en = "\n\n-- COMPATIBLE ONLY WITH MUTATORS --\n",
     es = "\n\n-- COMPATIBLE CON LAS MUTACIONES --\n",
-    ["zh-cn"] = "\n\n-- 仅兼容突变器 --\n",
     ru = "\n\n-- СОВМЕСТИМО ТОЛЬКО С МУТАТОРАМИ --\n",
+    ["zh-cn"] = "\n\n-- 仅兼容突变器 --\n",
     ja = "\n\n-- ミューテーターとのみ互換性あり",
   },
   tooltip_compatible_with_all_mutators = {
     en = "\n\n-- COMPATIBLE WITH ALL MUTATORS --",
     es = "\n\n-- COMPATIBLE CON TODAS LAS MUTACIONES --",
-    ["zh-cn"] = "\n\n-- 兼容所有突变器 --\n",
     ru = "\n\n-- СОВМЕСТИМО СО ВСЕМИ МУТАТОРАМИ --\n",
+    ["zh-cn"] = "\n\n-- 兼容所有突变器 --\n",
     ja = "\n\n-- すべてのミューテーターと互換性あり --\n",
   },
   tooltip_incompatible_with_all_mutators = {
     en = "\n\n-- INCOMPATIBLE WITH ALL MUTATORS --",
     es = "\n\n-- INCOMPATIBLE CON TODAS LAS MUTACIONES --",
-    ["zh-cn"] = "\n\n-- 不兼容所有突变器 --\n",
     ru = "\n\n-- НЕСОВМЕСТИМО СО ВСЕМИ МУТАТОРАМИ --\n",
+    ["zh-cn"] = "\n\n-- 不兼容所有突变器 --\n",
     ja = "\n\n-- すべてのミューテーターと互換性なし --\n",
   },
 
   tooltip_incompatible_diffs = {
     en = "\n\n-- INCOMPATIBLE WITH DIFFICULTIES --\n",
     es = "\n\n-- INCOMPATIBLE CON LAS DIFICULTADES --\n",
-    ["zh-cn"] = "\n\n-- 不兼容难度 --\n",
     ru = "\n\n-- НЕСОВМЕСТИМО СО СЛОЖНОСТЯМИ --\n",
+    ["zh-cn"] = "\n\n-- 不兼容难度 --\n",
     ja = "\n\n-- 難易度と互換性なし --\n",
   },
   tooltip_compatible_diffs = {
     en = "\n\n-- COMPATIBLE ONLY WITH DIFFICULTIES --\n",
     es = "\n\n-- COMPATIBLE CON LAS DIFICULTADES --\n",
-    ["zh-cn"] = "\n\n-- 仅兼容难度 --\n",
     ru = "\n\n-- СОВМЕСТИМО ТОЛЬКО СО СЛОЖНОСТЯМИ --\n",
+    ["zh-cn"] = "\n\n-- 仅兼容难度 --\n",
     ja = "\n\n-- 難易度とのみ互換性あり --\n",
   },
   tooltip_compatible_with_all_diffs = {
     en = "\n\n-- COMPATIBLE WITH ALL DIFFICULTIES --",
     es = "\n\n-- COMPATIBLE CON TODAS LAS DIFICULTADES --",
-    ["zh-cn"] = "\n\n-- 兼容所有难度 --\n",
     ru = "\n\n-- СОВМЕСТИМО СО ВСЕМИ СЛОЖНОСТЯМИ --\n",
+    ["zh-cn"] = "\n\n-- 兼容所有难度 --\n",
     ja = "\n\n-- すべての難易度と互換性あり --\n",
   },
 
   tooltip_conflicts = {
     en = "\n\n-- CONFLICTS --\n",
     es = "\n\n-- CONFLICTOS --\n",
-    ["zh-cn"] = "\n\n-- 冲突 --\n",
     ru = "\n\n-- КОНФЛИКТЫ --\n",
+    ["zh-cn"] = "\n\n-- 冲突 --\n",
     ja = "\n\n-- 競合 --\n",
   },
 
   tooltip_append_mutator = {
     en = " (mutator)",
     es = " (mutacion)",
-    ["zh-cn"] = "（突变）",
     ru = " (мутатор)",
+    ["zh-cn"] = "（突变）",
     ja = " (ミューテーター)",
   },
   tooltip_append_difficulty = {
     en = " (difficulty)",
     es = " (dificultad)",
-    ["zh-cn"] = "（难度）",
     ru = " (сложность)",
+    ["zh-cn"] = "（难度）",
     ja = " (難易度)",
   },
 }
