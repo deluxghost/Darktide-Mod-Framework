@@ -7,8 +7,8 @@ local PREVIEW_GAP = 8
 local CHANNEL_LABEL_WIDTH = 20
 local MAX_TRACK_HEIGHT = 16
 local DRAG_SENSITIVITY = 1
-local TRACK_COLOR = Color.terminal_corner(255, true)
-local TRACK_HOVER_COLOR = Color.terminal_corner_hover(255, true)
+local TRACK_COLOR = Color.terminal_corner(140, true)
+local TRACK_HOVER_COLOR = Color.terminal_corner_hover(165, true)
 local HIGHLIGHT_SIZE_ADDITION = ListHeaderPassTemplates.highlight_size_addition
 
 local CHANNELS = {
