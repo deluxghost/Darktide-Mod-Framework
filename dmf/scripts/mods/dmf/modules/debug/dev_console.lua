@@ -45,6 +45,42 @@ local function bind_dev_console_output()
   end
 end
 
+local function disable_dev_console_close()
+  if not _ffi then
+    return
+  end
+
+  _ffi.cdef([[
+    void* GetConsoleWindow(void);
+    void* GetSystemMenu(void* hWnd, int bRevert);
+    uint32_t EnableMenuItem(void* hMenu, uint32_t uIDEnableItem, uint32_t uEnable);
+    int DrawMenuBar(void* hWnd);
+  ]])
+
+  local hwnd = _ffi.C.GetConsoleWindow()
+  if hwnd == nil then
+    dmf:error("(developer console) could not get the console window")
+    return
+  end
+
+  local system_menu = _ffi.C.GetSystemMenu(hwnd, 0)
+  if system_menu == nil then
+    dmf:error("(developer console) could not get the console system menu")
+    return
+  end
+
+  local SC_CLOSE = 0xf060
+  local MF_GRAYED = 0x1
+  if _ffi.C.EnableMenuItem(system_menu, SC_CLOSE, MF_GRAYED) == 0xffffffff then
+    dmf:error("(developer console) could not disable the console close command")
+    return
+  end
+
+  if _ffi.C.DrawMenuBar(hwnd) == 0 then
+    dmf:error("(developer console) could not redraw the console menu bar")
+  end
+end
+
 local function log_and_console_print(...)
   CommandWindow.print(...)
   _console_data.original_print(...)
@@ -54,6 +90,8 @@ local function open_dev_console()
 
   if not _console_data.enabled then
     CommandWindow.open("Developer console")
+    -- Closing the command window directly signals an application exit, so only DMF may close it safely.
+    disable_dev_console_close()
     bind_dev_console_output()
     _console_data.enabled = true
   end
