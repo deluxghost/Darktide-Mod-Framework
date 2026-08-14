@@ -39,15 +39,28 @@ function DMFMod:init(mod_name)
   local vanilla_mod_data = Managers.mod._mods[Managers.mod._mod_load_index]
   local mod_file_data = vanilla_mod_data.data
 
-  set_internal_data(self, "workshop_id",   vanilla_mod_data.id)
-  set_internal_data(self, "workshop_name", vanilla_mod_data.name)
-  set_internal_data(self, "mod_handle",    vanilla_mod_data.handle)
-  set_internal_data(self, "version",       mod_file_data.version)
-  set_internal_data(self, "author",        mod_file_data.author)
+  set_internal_data(self, "load_order_id",   vanilla_mod_data.id)
+  set_internal_data(self, "load_order_name", vanilla_mod_data.name)
+  set_internal_data(self, "workshop_id",     vanilla_mod_data.id)
+  set_internal_data(self, "workshop_name",   vanilla_mod_data.name)
+  set_internal_data(self, "mod_handle",      vanilla_mod_data.handle)
+  set_internal_data(self, "version",         mod_file_data.version)
+  set_internal_data(self, "author",          mod_file_data.author)
   self._declared_package_names = mod_file_data.packages
 
-  print(string.format("Init DMF mod '%s' [workshop_name: '%s', workshop_id: %s]", mod_name, vanilla_mod_data.name,
-                                                                                   vanilla_mod_data.id))
+  local log_properties = {
+    string.format("load_order_name: '%s'", vanilla_mod_data.name),
+    string.format("load_order_id: %s", vanilla_mod_data.id),
+  }
+
+  if mod_file_data.version ~= nil and tostring(mod_file_data.version) ~= "" then
+    log_properties[#log_properties + 1] = string.format("version: '%s'", mod_file_data.version)
+  end
+  if mod_file_data.author ~= nil and tostring(mod_file_data.author) ~= "" then
+    log_properties[#log_properties + 1] = string.format("author: '%s'", mod_file_data.author)
+  end
+
+  print(string.format("Init DMF mod '%s' [%s]", mod_name, table.concat(log_properties, ", ")))
 end
 
 -- #####################################################################################################################
@@ -60,15 +73,15 @@ end
   * key [string]: data entry name
 
   Possible entry names:
-    - name           (system mod name)
-    - readable_name  (readable mod name)
-    - description    (mod description)
-    - version        (version defined by the .mod file)
-    - author         (author defined by the .mod file)
-    - is_togglable   (if the mod can be disabled/enabled)
-    - is_enabled     (if the mod is curently enabled)
-    - is_mutator     (if the mod is mutator)
-    - mutator_config (mutator config)
+    - name            (system mod name)
+    - readable_name   (readable mod name)
+    - load_order_id   (mod load order entry id)
+    - load_order_name (mod load order entry name)
+    - description     (mod description)
+    - version         (version defined by the .mod file)
+    - author          (author defined by the .mod file)
+    - is_togglable    (if the mod can be disabled/enabled)
+    - is_enabled      (if the mod is curently enabled)
 --]]
 function DMFMod:get_internal_data(key)
   return self._data[key]
