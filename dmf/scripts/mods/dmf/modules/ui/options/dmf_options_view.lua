@@ -1113,6 +1113,7 @@ DMFOptionsView._refresh_dynamic_options = function (self, changed_entry)
 
   if scroll_length > 0 then
     grid:set_scrollbar_progress(math.clamp(scroll_amount, 0, scroll_length) / scroll_length)
+    grid:_update_scroll_progress(true)
   end
 
   if restore_gamepad_focus and changed_entry then
