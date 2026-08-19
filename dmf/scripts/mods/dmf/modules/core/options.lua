@@ -614,11 +614,6 @@ end
 -- ---------------------------------------------------------------------------------------------------------------------
 
 local function initialize_widget_data(mod, data, localize, collapsed_widgets)
-  -- backward compatibility for the legacy widget type
-  if data.type == "text_input" then
-    data.type = "text"
-  end
-
   if data.type == "header" then
     return initialize_header_data(mod, data)
   elseif data.type == "group" then
@@ -637,6 +632,9 @@ local function initialize_widget_data(mod, data, localize, collapsed_widgets)
     return initialize_color_data(mod, data, localize)
   elseif data.type == "text" then
     return initialize_text_data(mod, data, localize)
+  elseif data.type == "text_input" then
+    -- The legacy widget reused keybind initialization for its stored value and callback fields.
+    return initialize_keybind_data(mod, data, localize)
   end
   -- if data.type is incorrect, returns nil
 end
