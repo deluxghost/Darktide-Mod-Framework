@@ -6,7 +6,6 @@ local PREVIEW_SIZE = 64
 local PREVIEW_GAP = 8
 local CHANNEL_LABEL_WIDTH = 20
 local MAX_TRACK_HEIGHT = 16
-local DRAG_SENSITIVITY = 1
 local TRACK_COLOR = Color.terminal_corner(140, true)
 local TRACK_HOVER_COLOR = Color.terminal_corner_hover(165, true)
 local HIGHLIGHT_SIZE_ADDITION = ListHeaderPassTemplates.highlight_size_addition
@@ -24,11 +23,13 @@ local function cursor_x(input_service, inverse_scale)
   return cursor[1]
 end
 
+local function track_geometry(controls_x, controls_width)
+  return controls_x + CHANNEL_LABEL_WIDTH, controls_width - CHANNEL_LABEL_WIDTH
+end
+
 local function stop_drag(content)
   content.active_color_channel = nil
   content.drag_active = nil
-  content.drag_value = nil
-  content.previous_cursor_x = nil
 end
 
 local function preview_is_highlighted(content)
@@ -36,8 +37,10 @@ local function preview_is_highlighted(content)
     or content.exclusive_focus and content.gamepad_selected_control == "preview"
 end
 
-local function create_drag_logic(channels, has_alpha)
-  return function (pass_, renderer, style_, content)
+local function create_drag_logic(channels, has_alpha, controls_x, controls_width)
+  local track_x, track_width = track_geometry(controls_x, controls_width)
+
+  return function (pass_, renderer, style_, content, position)
     local input_service = renderer.input_service
 
     if not input_service then
@@ -58,16 +61,17 @@ local function create_drag_logic(channels, has_alpha)
         local hotspot = content["color_hotspot_" .. channel.index]
 
         if hotspot.on_pressed then
-          content.active_color_channel = channel.index
+          active_channel = channel.index
+          content.active_color_channel = active_channel
           content.drag_active = true
-          content.drag_value = content.preview_color[channel.index]
-          content.previous_cursor_x = cursor_x(input_service, renderer.inverse_scale)
 
-          return
+          break
         end
       end
 
-      return
+      if not active_channel then
+        return
+      end
     end
 
     if not input_service:get("left_hold") then
@@ -77,22 +81,13 @@ local function create_drag_logic(channels, has_alpha)
     end
 
     local current_cursor_x = cursor_x(input_service, renderer.inverse_scale)
-    local cursor_delta = current_cursor_x - content.previous_cursor_x
-
-    content.previous_cursor_x = current_cursor_x
-
-    if cursor_delta == 0 then
-      return
-    end
-
-    local drag_value = math.clamp(content.drag_value + cursor_delta * DRAG_SENSITIVITY, 0, 255)
-    local component_value = math.round(drag_value)
+    local track_progress = math.clamp((current_cursor_x - position[1] - track_x) / track_width, 0, 1)
+    local component_value = math.round(track_progress * 255)
 
     if content.preview_color[active_channel] == component_value then
       return
     end
 
-    content.drag_value = drag_value
     content.preview_color[active_channel] = component_value
 
     if not has_alpha then
@@ -226,8 +221,7 @@ local function create_channel_passes(channel, channel_order, channel_count, cont
   local row_y = (height - row_height * channel_count) * 0.5 + (channel_order - 1) * row_height
   local track_height = math.min(MAX_TRACK_HEIGHT, row_height - 4)
   local track_y = row_y + (row_height - track_height) * 0.5
-  local track_x = controls_x + CHANNEL_LABEL_WIDTH
-  local track_width = controls_width - CHANNEL_LABEL_WIDTH
+  local track_x, track_width = track_geometry(controls_x, controls_width)
   local hotspot_id = "color_hotspot_" .. channel_index
   local value_id = "color_value_" .. channel_index
   local label_style = table.clone(UIFontSettings.list_button)
@@ -377,7 +371,7 @@ local function create_pass_template(width, height, settings_value_width, has_alp
 
   passes[#passes + 1] = {
     pass_type = "logic",
-    value = create_drag_logic(channels, has_alpha),
+    value = create_drag_logic(channels, has_alpha, controls_x, controls_width),
   }
 
   table.append(passes, create_preview_passes(preview_x))
