@@ -4,6 +4,7 @@ local dmf = get_mod("DMF")
 local _view_settings = dmf:io_dofile("dmf/scripts/mods/dmf/modules/ui/options/dmf_options_view_settings")
 local ColorWidget = dmf:io_dofile("dmf/scripts/mods/dmf/modules/ui/options/color/color_widget")
 local NumericInput = dmf:io_dofile("dmf/scripts/mods/dmf/modules/ui/options/numeric/numeric_input")
+local TextInputWidget = dmf:io_dofile("dmf/scripts/mods/dmf/modules/ui/options/text_input/text_input_widget")
 local TextWidget = dmf:io_dofile("dmf/scripts/mods/dmf/modules/ui/options/text/text_widget")
 
 local ButtonPassTemplates = require("scripts/ui/pass_templates/button_pass_templates")
@@ -1041,5 +1042,10 @@ blueprints.keybind = {
 }
 
 blueprints.text = TextWidget.create_blueprint(settings_grid_width, settings_value_width, settings_value_height)
+blueprints.text_input = TextInputWidget.create_blueprint(
+  settings_grid_width,
+  settings_value_width,
+  settings_value_height
+)
 
 return settings("DMFOptionsViewContentBlueprints", blueprints)
